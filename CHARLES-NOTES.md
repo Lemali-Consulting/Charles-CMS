@@ -14,7 +14,28 @@
 
 **Why the prompt matters (agentic engineering perspective):** This prompt is effective because it is *declarative and outcome-oriented* — it states the desired end state ("a git repo pushed to this specific remote") rather than prescribing each step. This gives the agent freedom to determine the right sequence of operations (init, check remote, create repo, push) and handle edge cases (e.g., repo already exists, branch naming). A less effective prompt might have micromanaged each git command, which would be brittle and remove the agent's ability to adapt.
 
-### 2. "Make sure you add to CHARLES-NOTES.md"
+### 2. Client feature request: Introduction tracking and reporting
+
+**What was asked:** The user shared a raw client request: *"I want to know how many introductions I'm making every month between founders and investors/talent/customers. Specifically, I want to be able to leverage that in social media communications and reporting as well as continue to improve that number overtime."*
+
+The user asked: "What are your recommendations?"
+
+**How it was addressed:** Rather than jumping straight into code, the agent:
+1. Inspected the current codebase to understand what exists (greenfield — no code yet).
+2. Decomposed the client's request into four concrete needs: data capture, monthly aggregation, exportable stats for social/reporting, and trend tracking.
+3. Recommended a lean tech stack (Next.js, SQLite/Postgres, Recharts) proportional to the problem size.
+4. Proposed a core data model and prioritized feature list.
+5. Identified ambiguities in the client request to push back on (auto-posting vs. copy-paste, goal-setting, single-user vs. team).
+6. Asked the user whether to start building or refine scope first — avoiding premature implementation.
+
+**Why the prompt matters (agentic engineering perspective):** This prompt is powerful because it is a *delegation of product thinking*, not just coding. By sharing the raw client request and asking "what are your recommendations?", the user treats the agent as a technical consultant, not just a code generator. This forces the agent to:
+- **Interpret ambiguous requirements** ("leverage in social media" could mean many things)
+- **Make architectural tradeoffs** (SQLite vs. Postgres, what to build first)
+- **Push back constructively** (identifying what to clarify before building)
+
+This is a hallmark of effective agentic engineering: giving the agent the *problem* rather than a *solution to implement*. It produces better outcomes because the agent can apply its breadth of knowledge to recommend approaches the user might not have considered, while the user retains decision authority over scope and direction.
+
+### 3. "Make sure you add to CHARLES-NOTES.md"
 
 **What was asked:** A reminder to follow the instruction in CLAUDE.md — to maintain this living document alongside development.
 
