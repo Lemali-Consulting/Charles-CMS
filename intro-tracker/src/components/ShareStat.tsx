@@ -4,6 +4,7 @@ import { useState } from "react";
 
 interface MonthlyStat {
   month: string;
+  founder: number;
   investor: number;
   talent: number;
   customer: number;
@@ -21,7 +22,7 @@ export default function ShareStat({ stat }: { stat: MonthlyStat | null }) {
 
   if (!stat) return null;
 
-  const text = `This month I made ${stat.total} introduction${stat.total !== 1 ? "s" : ""} — ${stat.investor} to investors, ${stat.talent} to talent, ${stat.customer} to customers. #networking #introductions`;
+  const text = `This month I made ${stat.total} introduction${stat.total !== 1 ? "s" : ""} — ${stat.founder} to founders, ${stat.investor} to investors, ${stat.talent} to talent, ${stat.customer} to customers. #networking #introductions`;
 
   function handleCopy() {
     navigator.clipboard.writeText(text);

@@ -13,6 +13,7 @@ import {
 
 interface MonthlyStat {
   month: string;
+  founder: number;
   investor: number;
   talent: number;
   customer: number;
@@ -49,6 +50,7 @@ export default function MonthlySummary({ data }: { data: MonthlyStat[] }) {
           <YAxis allowDecimals={false} fontSize={12} />
           <Tooltip />
           <Legend />
+          <Bar dataKey="founder" fill="#8b5cf6" name="Founders" radius={[2, 2, 0, 0]} />
           <Bar dataKey="investor" fill="#3b82f6" name="Investors" radius={[2, 2, 0, 0]} />
           <Bar dataKey="talent" fill="#10b981" name="Talent" radius={[2, 2, 0, 0]} />
           <Bar dataKey="customer" fill="#f59e0b" name="Customers" radius={[2, 2, 0, 0]} />

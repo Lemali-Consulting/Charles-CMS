@@ -64,3 +64,28 @@ The lesson: invest time in the planning prompt, then get out of the way. A short
 **How it was addressed:** The agent re-read CLAUDE.md to confirm the requirements, checked whether the file already existed, and created it with entries for all prompts so far.
 
 **Why the prompt matters (agentic engineering perspective):** This is a *meta-prompt* — it doesn't ask for a code feature but ensures the agent is following process. It demonstrates an important agentic engineering pattern: **accountability checks**. By keeping the agent honest about its own instructions, the user establishes that CLAUDE.md directives are not optional context but active requirements. Short, directive reminders like this are more effective than re-explaining the full requirement, because they signal trust in the agent's ability to look up and follow the original instruction.
+
+### 5. Client feature request: Contact tracking with tags and multi-type support
+
+**What was asked:** The user shared a second client request: *"I want to be able to track the amount of founders, investors and customers (Businesses purchasing from startups) I'm talking to in a given month. Ideally would be able to tag by industry, company, and university affiliation (if possible). This would eventually be useful in external communications (% of startups in X industry or from Y school)."*
+
+The user asked the agent to plan the implementation, then clarified during planning that contacts should support *multiple types simultaneously* (e.g., someone can be both a founder and a customer).
+
+**How it was addressed:** The agent:
+1. Entered plan mode and explored the entire existing codebase to understand current schema, components, and patterns.
+2. Identified that the existing `contact_type` (single value) needed to become `contact_types` (JSON array) to support multi-select.
+3. Asked a clarifying question about whether "talent" should be replaced by "founder" or kept alongside it — the user chose to keep all four types with multi-select.
+4. Designed a 9-step implementation plan covering: database migration (SQLite table rebuild with JSON array column + 3 new tag columns), API updates, a new `/api/introductions/tags` endpoint for autocomplete, form redesign with multi-select toggles and autocomplete inputs, dashboard updates with tag breakdown cards showing percentages, and chart/share component updates for the new founder type.
+5. Implemented the plan:
+   - **Database layer**: Added migration logic to detect old schema and rebuild the table, converting `contact_type` → `contact_types` (JSON array). Added `industry`, `company`, `university` columns. New queries using `json_each()` for type-based aggregation, plus `getTagBreakdown()` and `getDistinctTags()` functions.
+   - **API**: Updated POST validation for arrays, added tag endpoint.
+   - **Form**: Multi-select toggle buttons with per-type colors (purple for founders), three autocomplete inputs that suggest previously-used tags.
+   - **Dashboard**: 5 stat cards (total + 4 types), industry/university breakdown cards with counts and percentages, updated charts with founder data in purple.
+6. Verified the build compiled cleanly.
+
+**Why the prompt matters (agentic engineering perspective):** This prompt demonstrates *iterative delegation with progressive refinement*. The user:
+1. **Started with a raw client request** — again delegating interpretation rather than pre-digesting requirements.
+2. **Asked for a plan first** ("can you make a plan for this?") — signaling they wanted alignment before execution. This is critical when the feature touches the data model, because schema changes are harder to undo than UI tweaks.
+3. **Provided a meaningful correction during planning** — the multi-select requirement wasn't in the original client request but emerged from the agent's clarifying question. This is the highest-value moment in agentic engineering: *the agent asking the right question surfaces a requirement the user hadn't explicitly stated*. Without that question, the system would have been built with single-select and would have needed rework.
+
+The lesson: asking the agent to plan before building creates a structured checkpoint where latent requirements surface. The cost of a planning step is low; the cost of rebuilding a data model after launch is high. Effective agentic engineering front-loads decisions that are expensive to change later.

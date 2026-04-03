@@ -6,15 +6,26 @@ import ShareStat from "@/components/ShareStat";
 
 interface MonthlyStat {
   month: string;
+  founder: number;
   investor: number;
   talent: number;
   customer: number;
   total: number;
 }
 
+interface TagBreakdown {
+  label: string;
+  count: number;
+  percentage: number;
+}
+
 interface StatsResponse {
   monthly: MonthlyStat[];
   currentMonth: MonthlyStat | null;
+  tagBreakdown: {
+    industries: TagBreakdown[];
+    universities: TagBreakdown[];
+  };
 }
 
 export default function Dashboard() {
@@ -45,8 +56,9 @@ export default function Dashboard() {
       </div>
 
       {/* Current month stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
         <StatCard label="This Month" value={current?.total ?? 0} color="bg-gray-900" />
+        <StatCard label="Founders" value={current?.founder ?? 0} color="bg-purple-600" />
         <StatCard label="Investors" value={current?.investor ?? 0} color="bg-blue-600" />
         <StatCard label="Talent" value={current?.talent ?? 0} color="bg-emerald-600" />
         <StatCard label="Customers" value={current?.customer ?? 0} color="bg-amber-500" />
@@ -54,6 +66,14 @@ export default function Dashboard() {
 
       {/* Monthly bar chart */}
       <MonthlySummary data={stats?.monthly ?? []} />
+
+      {/* Tag breakdowns */}
+      {stats?.tagBreakdown && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <BreakdownCard title="By Industry" items={stats.tagBreakdown.industries} />
+          <BreakdownCard title="By University" items={stats.tagBreakdown.universities} />
+        </div>
+      )}
 
       {/* Share stat */}
       <ShareStat stat={current ?? null} />
@@ -77,6 +97,39 @@ function StatCard({
         <span className={`w-2.5 h-2.5 rounded-full ${color}`} />
         <span className="text-3xl font-bold">{value}</span>
       </div>
+    </div>
+  );
+}
+
+function BreakdownCard({
+  title,
+  items,
+}: {
+  title: string;
+  items: TagBreakdown[];
+}) {
+  if (items.length === 0) {
+    return (
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold mb-2">{title}</h3>
+        <p className="text-sm text-gray-400">No data yet</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <h3 className="text-lg font-semibold mb-3">{title}</h3>
+      <ul className="space-y-2">
+        {items.map((item) => (
+          <li key={item.label} className="flex items-center justify-between text-sm">
+            <span className="text-gray-700">{item.label}</span>
+            <span className="text-gray-500">
+              {item.count} ({item.percentage}%)
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

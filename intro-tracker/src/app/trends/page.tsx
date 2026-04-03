@@ -5,6 +5,7 @@ import TrendChart from "@/components/TrendChart";
 
 interface MonthlyStat {
   month: string;
+  founder: number;
   investor: number;
   talent: number;
   customer: number;

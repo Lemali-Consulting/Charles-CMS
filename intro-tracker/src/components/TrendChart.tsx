@@ -13,6 +13,7 @@ import {
 
 interface MonthlyStat {
   month: string;
+  founder: number;
   investor: number;
   talent: number;
   customer: number;
@@ -56,6 +57,14 @@ export default function TrendChart({ data }: { data: MonthlyStat[] }) {
             strokeWidth={2}
             name="Total"
             dot={{ r: 4 }}
+          />
+          <Line
+            type="monotone"
+            dataKey="founder"
+            stroke="#8b5cf6"
+            strokeWidth={1.5}
+            name="Founders"
+            dot={{ r: 3 }}
           />
           <Line
             type="monotone"

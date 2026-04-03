@@ -5,6 +5,8 @@ import {
   deleteIntroduction,
 } from "@/lib/db";
 
+const VALID_TYPES = ["founder", "investor", "talent", "customer"];
+
 export async function GET() {
   const introductions = getIntroductions();
   return NextResponse.json(introductions);
@@ -13,18 +15,25 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const body = await request.json();
 
-  const { date, founder_name, contact_name, contact_type, notes } = body;
+  const { date, founder_name, contact_name, contact_types, industry, company, university, notes } = body;
 
-  if (!date || !founder_name || !contact_name || !contact_type) {
+  if (!date || !founder_name || !contact_name || !contact_types) {
     return NextResponse.json(
-      { error: "Missing required fields: date, founder_name, contact_name, contact_type" },
+      { error: "Missing required fields: date, founder_name, contact_name, contact_types" },
       { status: 400 }
     );
   }
 
-  if (!["investor", "talent", "customer"].includes(contact_type)) {
+  if (!Array.isArray(contact_types) || contact_types.length === 0) {
     return NextResponse.json(
-      { error: "contact_type must be one of: investor, talent, customer" },
+      { error: "contact_types must be a non-empty array" },
+      { status: 400 }
+    );
+  }
+
+  if (!contact_types.every((t: string) => VALID_TYPES.includes(t))) {
+    return NextResponse.json(
+      { error: `Each contact_type must be one of: ${VALID_TYPES.join(", ")}` },
       { status: 400 }
     );
   }
@@ -33,7 +42,10 @@ export async function POST(request: NextRequest) {
     date,
     founder_name,
     contact_name,
-    contact_type,
+    contact_types,
+    industry,
+    company,
+    university,
     notes,
   });
 
