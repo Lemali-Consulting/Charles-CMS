@@ -7,6 +7,7 @@ const links = [
   { href: "/", label: "Dashboard" },
   { href: "/log", label: "Log Introduction" },
   { href: "/trends", label: "Trends" },
+  { href: "/export", label: "Export" },
 ];
 
 export default function Nav() {

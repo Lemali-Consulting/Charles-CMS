@@ -89,3 +89,27 @@ The user asked the agent to plan the implementation, then clarified during plann
 3. **Provided a meaningful correction during planning** — the multi-select requirement wasn't in the original client request but emerged from the agent's clarifying question. This is the highest-value moment in agentic engineering: *the agent asking the right question surfaces a requirement the user hadn't explicitly stated*. Without that question, the system would have been built with single-select and would have needed rework.
 
 The lesson: asking the agent to plan before building creates a structured checkpoint where latent requirements surface. The cost of a planning step is low; the cost of rebuilding a data model after launch is high. Effective agentic engineering front-loads decisions that are expensive to change later.
+
+### 6. Client feature request: Dealroom Excel export for founders
+
+**What was asked:** The user shared another client request: *"A secondary flow from above that I want to be able to unlock is the ability to compile founders I'm meeting into an excel sheet to be able to send to Dealroom to maintain an accurate public database of the ecosystem. They only need a website."*
+
+The user asked the agent to make a plan.
+
+**How it was addressed:** The agent:
+1. Explored the full codebase to understand the current data model, API routes, and UI components.
+2. Identified that the existing schema had no `website` field — a new column was needed.
+3. Designed a 6-step plan: add `website` column with SQLite migration, update the form with a URL input, update the API, create a new Excel export endpoint using the `xlsx` library, build an `/export` page with a preview table and download button, and add a nav link.
+4. Key design decisions presented in the plan:
+   - Website field is always visible (not conditional on "founder" type) — other contacts have websites too, and the export filters by type anyway.
+   - The export includes Contact Name, Company, Website, Industry, Introduced By, and Date — Dealroom needs the website, but the user needs context columns for their own reference.
+   - Simple `<a href>` download — no complex client-side file handling needed.
+5. After plan approval, implemented all changes and verified a clean production build.
+
+**Why the prompt matters (agentic engineering perspective):** This prompt demonstrates *building on established patterns* — the user has now trained the agent (and themselves) on a workflow: share raw client request → ask for a plan → review → approve → build. The key agentic engineering insight here is **framing the request as a "secondary flow from above."** This single phrase:
+- **Establishes dependency** — the agent understands this builds on the existing introduction tracking system, not a separate feature.
+- **Signals scope** — "secondary flow" tells the agent this should be lightweight, not a major new system.
+- **Communicates the external stakeholder** — mentioning Dealroom by name gives the agent context about *who* will consume the output, which informs what columns to include and what format to use.
+- **Constrains the deliverable** — "They only need a website" is a remarkably efficient constraint. It tells the agent exactly what the minimum viable data point is, while leaving room for the agent to include additional context columns for the user's benefit.
+
+The lesson: when delegating to an agent, naming the external consumer and their minimum requirement produces more focused implementations than describing every field you want. The agent can infer supporting fields (name, company, date) from context; what it cannot infer is the core constraint ("Dealroom only needs a website").

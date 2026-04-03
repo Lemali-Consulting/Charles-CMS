@@ -30,6 +30,7 @@ function getDb(): Database.Database {
           industry TEXT,
           company TEXT,
           university TEXT,
+          website TEXT,
           notes TEXT,
           created_at TEXT NOT NULL DEFAULT (datetime('now'))
         )
@@ -53,12 +54,21 @@ function getDb(): Database.Database {
           industry TEXT,
           company TEXT,
           university TEXT,
+          website TEXT,
           notes TEXT,
           created_at TEXT NOT NULL DEFAULT (datetime('now'))
         )
       `);
     }
     // If hasNewSchema is already true, table is up to date — nothing to do
+
+    // Migrate: add website column if missing
+    const currentColumns = db
+      .prepare("PRAGMA table_info(introductions)")
+      .all() as { name: string }[];
+    if (!currentColumns.some((c) => c.name === "website")) {
+      db.exec("ALTER TABLE introductions ADD COLUMN website TEXT");
+    }
   }
   return db;
 }
@@ -72,6 +82,7 @@ export interface Introduction {
   industry: string | null;
   company: string | null;
   university: string | null;
+  website: string | null;
   notes: string | null;
   created_at: string;
 }
@@ -84,6 +95,7 @@ export interface IntroductionInput {
   industry?: string;
   company?: string;
   university?: string;
+  website?: string;
   notes?: string;
 }
 
@@ -107,8 +119,8 @@ const VALID_TYPES = ["founder", "investor", "talent", "customer"];
 export function createIntroduction(input: IntroductionInput): Introduction {
   const db = getDb();
   const stmt = db.prepare(`
-    INSERT INTO introductions (date, founder_name, contact_name, contact_types, industry, company, university, notes)
-    VALUES (@date, @founder_name, @contact_name, @contact_types, @industry, @company, @university, @notes)
+    INSERT INTO introductions (date, founder_name, contact_name, contact_types, industry, company, university, website, notes)
+    VALUES (@date, @founder_name, @contact_name, @contact_types, @industry, @company, @university, @website, @notes)
   `);
   const result = stmt.run({
     date: input.date,
@@ -118,6 +130,7 @@ export function createIntroduction(input: IntroductionInput): Introduction {
     industry: input.industry || null,
     company: input.company || null,
     university: input.university || null,
+    website: input.website || null,
     notes: input.notes || null,
   });
   const row = db
@@ -250,6 +263,19 @@ export function getDistinctTags(): {
     companies: companies.map((r) => r.company),
     universities: universities.map((r) => r.university),
   };
+}
+
+export function getFounderIntroductions(): Introduction[] {
+  const rows = getDb()
+    .prepare(
+      `SELECT * FROM introductions
+       WHERE EXISTS (
+         SELECT 1 FROM json_each(contact_types) WHERE value = 'founder'
+       )
+       ORDER BY date DESC`
+    )
+    .all() as Record<string, unknown>[];
+  return rows.map(deserializeIntroduction);
 }
 
 export function deleteIntroduction(id: number): boolean {
