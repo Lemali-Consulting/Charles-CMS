@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 const links = [
   { href: "/", label: "Dashboard" },
@@ -12,12 +12,21 @@ const links = [
 
 export default function Nav() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  if (pathname === "/login") return null;
+
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
     <nav className="bg-gray-900 text-white">
       <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-8">
         <span className="font-bold text-lg tracking-tight">IntroTracker</span>
-        <div className="flex gap-1">
+        <div className="flex gap-1 flex-1">
           {links.map((link) => (
             <Link
               key={link.href}
@@ -32,6 +41,12 @@ export default function Nav() {
             </Link>
           ))}
         </div>
+        <button
+          onClick={handleLogout}
+          className="px-3 py-1.5 rounded text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
+        >
+          Sign out
+        </button>
       </div>
     </nav>
   );
