@@ -33,7 +33,7 @@ export default function ShareStat({ stat }: { stat: MonthlyStat | null }) {
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-6">
       <h2 className="text-lg font-semibold mb-2">Share Your Stats</h2>
-      <p className="text-sm text-gray-500 mb-3">
+      <p className="text-sm text-gray-600 mb-3">
         {formatMonthLong(stat.month)} — copy and paste to social media
       </p>
       <div className="bg-gray-50 rounded-md p-4 text-sm text-gray-800 mb-3 leading-relaxed">

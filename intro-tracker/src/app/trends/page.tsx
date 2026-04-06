@@ -27,7 +27,7 @@ export default function TrendsPage() {
   }, []);
 
   if (loading) {
-    return <div className="text-gray-500">Loading...</div>;
+    return <div className="text-gray-600">Loading...</div>;
   }
 
   const totalAll = data.reduce((sum, d) => sum + d.total, 0);
@@ -37,20 +37,20 @@ export default function TrendsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold mb-1">Trends</h1>
-        <p className="text-gray-500">Track your introduction activity over time.</p>
+        <p className="text-gray-600">Track your introduction activity over time.</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-white rounded-lg border border-gray-200 p-5">
-          <p className="text-sm text-gray-500 mb-1">Total Introductions</p>
+          <p className="text-sm text-gray-600 mb-1">Total Introductions</p>
           <span className="text-3xl font-bold">{totalAll}</span>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-5">
-          <p className="text-sm text-gray-500 mb-1">Avg / Month</p>
+          <p className="text-sm text-gray-600 mb-1">Avg / Month</p>
           <span className="text-3xl font-bold">{avgPerMonth}</span>
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-5">
-          <p className="text-sm text-gray-500 mb-1">Months Tracked</p>
+          <p className="text-sm text-gray-600 mb-1">Months Tracked</p>
           <span className="text-3xl font-bold">{data.length}</span>
         </div>
       </div>

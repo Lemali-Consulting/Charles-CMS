@@ -27,14 +27,14 @@ export default function ExportPage() {
   }, []);
 
   if (loading) {
-    return <div className="text-gray-500">Loading...</div>;
+    return <div className="text-gray-600">Loading...</div>;
   }
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold mb-1">Dealroom Export</h1>
-        <p className="text-gray-500">
+        <p className="text-gray-600">
           Export founder contacts as an Excel file for Dealroom.
         </p>
       </div>
@@ -43,7 +43,7 @@ export default function ExportPage() {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-lg font-semibold">Founder Contacts</h2>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-600">
               {founders.length} founder{founders.length !== 1 ? "s" : ""} will
               be included
             </p>
@@ -57,7 +57,7 @@ export default function ExportPage() {
         </div>
 
         {founders.length === 0 ? (
-          <p className="text-sm text-gray-400 py-4">
+          <p className="text-sm text-gray-600 py-4">
             No founder contacts logged yet. Log introductions with the
             &ldquo;founder&rdquo; type to populate this export.
           </p>
@@ -97,7 +97,7 @@ export default function ExportPage() {
                           {f.website}
                         </a>
                       ) : (
-                        <span className="text-gray-400">{"\u2014"}</span>
+                        <span className="text-gray-600">{"\u2014"}</span>
                       )}
                     </td>
                     <td className="py-2 text-gray-600">{f.date}</td>

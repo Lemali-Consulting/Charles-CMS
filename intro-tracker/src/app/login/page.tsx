@@ -40,7 +40,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="bg-white rounded-lg border border-gray-200 p-8 shadow-sm">
           <h1 className="text-xl font-bold text-gray-900 mb-1">IntroTracker</h1>
-          <p className="text-sm text-gray-500 mb-6">Enter your password to continue</p>
+          <p className="text-sm text-gray-600 mb-6">Enter your password to continue</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>

@@ -132,7 +132,7 @@ export default function IntroForm() {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Contact Type(s) <span className="text-gray-400 font-normal">— select all that apply</span>
+          Contact Type(s) <span className="text-gray-600 font-normal">— select all that apply</span>
         </label>
         <div className="flex gap-3">
           {CONTACT_TYPES.map((type) => {
@@ -152,7 +152,7 @@ export default function IntroForm() {
           })}
         </div>
         {formData.contact_types.length === 0 && status === "idle" && (
-          <p className="text-xs text-gray-400 mt-1">Select at least one type</p>
+          <p className="text-xs text-gray-600 mt-1">Select at least one type</p>
         )}
       </div>
 

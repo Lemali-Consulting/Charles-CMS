@@ -43,7 +43,7 @@ export default function Dashboard() {
   }, []);
 
   if (loading) {
-    return <div className="text-gray-500">Loading...</div>;
+    return <div className="text-gray-600">Loading...</div>;
   }
 
   const current = stats?.currentMonth;
@@ -52,7 +52,7 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold mb-1">Dashboard</h1>
-        <p className="text-gray-500">Your introduction activity at a glance.</p>
+        <p className="text-gray-600">Your introduction activity at a glance.</p>
       </div>
 
       {/* Current month stat cards */}
@@ -92,7 +92,7 @@ function StatCard({
 }) {
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-5">
-      <p className="text-sm text-gray-500 mb-1">{label}</p>
+      <p className="text-sm text-gray-600 mb-1">{label}</p>
       <div className="flex items-center gap-2">
         <span className={`w-2.5 h-2.5 rounded-full ${color}`} />
         <span className="text-3xl font-bold">{value}</span>
@@ -112,7 +112,7 @@ function BreakdownCard({
     return (
       <div className="bg-white rounded-lg border border-gray-200 p-6">
         <h3 className="text-lg font-semibold mb-2">{title}</h3>
-        <p className="text-sm text-gray-400">No data yet</p>
+        <p className="text-sm text-gray-600">No data yet</p>
       </div>
     );
   }
@@ -124,7 +124,7 @@ function BreakdownCard({
         {items.map((item) => (
           <li key={item.label} className="flex items-center justify-between text-sm">
             <span className="text-gray-700">{item.label}</span>
-            <span className="text-gray-500">
+            <span className="text-gray-600">
               {item.count} ({item.percentage}%)
             </span>
           </li>
