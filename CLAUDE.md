@@ -48,6 +48,20 @@ npm run lint     # ESLint
 
 The SQLite database (`crm.db`) auto-initializes on first run with all tables and seed data.
 
+## Seeding Test Data
+
+The seed script (`scripts/seed.js`) populates the database with realistic test data: 100 people, 15 organizations, 20 introductions, and ~25+ relationships. It is idempotent — safe to run multiple times.
+
+```bash
+# Local (creates/seeds crm.db in the intro-tracker directory)
+npm run seed
+
+# Fly.io (DB_DIR is set in fly.toml, pointing to the /data volume)
+fly ssh console -C "node scripts/seed.js"
+```
+
+To start fresh, delete `crm.db` before seeding.
+
 ## Data Model
 
 **Core entities**: `people` (with fixed categories: Investor, Customer, Talent), `organizations`
