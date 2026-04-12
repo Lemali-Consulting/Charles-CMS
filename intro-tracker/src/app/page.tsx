@@ -2,134 +2,89 @@
 
 import { useEffect, useState } from "react";
 import MonthlySummary from "@/components/MonthlySummary";
-import ShareStat from "@/components/ShareStat";
 
+interface NamedEntity { id: number; name: string }
 interface MonthlyStat {
   month: string;
-  founder: number;
-  investor: number;
-  talent: number;
-  customer: number;
   total: number;
-}
-
-interface TagBreakdown {
-  label: string;
-  count: number;
-  percentage: number;
+  by_type: Record<string, number>;
 }
 
 interface StatsResponse {
   monthly: MonthlyStat[];
-  currentMonth: MonthlyStat | null;
-  tagBreakdown: {
-    industries: TagBreakdown[];
-    universities: TagBreakdown[];
-  };
+  current: { total: number; by_type: Record<string, number> };
+  types: NamedEntity[];
 }
 
 export default function Dashboard() {
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [peopleCt, setPeopleCt] = useState(0);
+  const [orgsCt, setOrgsCt] = useState(0);
 
   useEffect(() => {
-    fetch("/api/introductions/stats")
-      .then((res) => res.json())
-      .then((data) => {
-        setStats(data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    Promise.all([
+      fetch("/api/stats").then(r => r.json()),
+      fetch("/api/people").then(r => r.json()),
+      fetch("/api/organizations").then(r => r.json()),
+    ]).then(([s, p, o]) => {
+      setStats(s);
+      setPeopleCt(p.length);
+      setOrgsCt(o.length);
+      setLoading(false);
+    }).catch(() => setLoading(false));
   }, []);
 
-  if (loading) {
-    return <div className="text-gray-600">Loading...</div>;
-  }
+  if (loading) return <div className="p-6 text-gray-600">Loading...</div>;
 
-  const current = stats?.currentMonth;
+  const current = stats?.current;
+  const typeNames = stats?.types.map(t => t.name) ?? [];
+
+  const COLORS = ["#8b5cf6", "#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#06b6d4"];
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold mb-1">Dashboard</h1>
-        <p className="text-gray-600">Your introduction activity at a glance.</p>
+        <p className="text-gray-600">Your CRM activity at a glance.</p>
       </div>
 
-      {/* Current month stat cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <StatCard label="People" value={peopleCt} color="bg-blue-600" />
+        <StatCard label="Organizations" value={orgsCt} color="bg-purple-600" />
         <StatCard label="This Month" value={current?.total ?? 0} color="bg-gray-900" />
-        <StatCard label="Founders" value={current?.founder ?? 0} color="bg-purple-600" />
-        <StatCard label="Investors" value={current?.investor ?? 0} color="bg-blue-600" />
-        <StatCard label="Talent" value={current?.talent ?? 0} color="bg-emerald-600" />
-        <StatCard label="Customers" value={current?.customer ?? 0} color="bg-amber-500" />
+        {typeNames.slice(0, 5).map((name, i) => (
+          <StatCard
+            key={name}
+            label={name}
+            value={current?.by_type[name] ?? 0}
+            color={`bg-[${COLORS[i % COLORS.length]}]`}
+            colorHex={COLORS[i % COLORS.length]}
+          />
+        ))}
       </div>
 
-      {/* Monthly bar chart */}
-      <MonthlySummary data={stats?.monthly ?? []} />
-
-      {/* Tag breakdowns */}
-      {stats?.tagBreakdown && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <BreakdownCard title="By Industry" items={stats.tagBreakdown.industries} />
-          <BreakdownCard title="By University" items={stats.tagBreakdown.universities} />
-        </div>
-      )}
-
-      {/* Share stat */}
-      <ShareStat stat={current ?? null} />
+      <MonthlySummary data={stats?.monthly ?? []} typeNames={typeNames} />
     </div>
   );
 }
 
-function StatCard({
-  label,
-  value,
-  color,
-}: {
+function StatCard({ label, value, color, colorHex }: {
   label: string;
   value: number;
   color: string;
+  colorHex?: string;
 }) {
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-5">
       <p className="text-sm text-gray-600 mb-1">{label}</p>
       <div className="flex items-center gap-2">
-        <span className={`w-2.5 h-2.5 rounded-full ${color}`} />
+        <span
+          className={`w-2.5 h-2.5 rounded-full ${colorHex ? "" : color}`}
+          style={colorHex ? { backgroundColor: colorHex } : undefined}
+        />
         <span className="text-3xl font-bold">{value}</span>
       </div>
-    </div>
-  );
-}
-
-function BreakdownCard({
-  title,
-  items,
-}: {
-  title: string;
-  items: TagBreakdown[];
-}) {
-  if (items.length === 0) {
-    return (
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold mb-2">{title}</h3>
-        <p className="text-sm text-gray-600">No data yet</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-white rounded-lg border border-gray-200 p-6">
-      <h3 className="text-lg font-semibold mb-3">{title}</h3>
-      <ul className="space-y-2">
-        {items.map((item) => (
-          <li key={item.label} className="flex items-center justify-between text-sm">
-            <span className="text-gray-700">{item.label}</span>
-            <span className="text-gray-600">
-              {item.count} ({item.percentage}%)
-            </span>
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }

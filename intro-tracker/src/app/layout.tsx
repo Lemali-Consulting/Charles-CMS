@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "IntroTracker — Track Your Introductions",
-  description: "Track introductions between founders and investors, talent, and customers",
+  title: "Charles CRM",
+  description: "Track people, organizations, relationships, and interactions",
 };
 
 export default function RootLayout({
@@ -28,9 +28,9 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-gray-50 text-gray-900">
+      <body className="min-h-full flex bg-gray-50 text-gray-900">
         <Nav />
-        <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-8">
+        <main className="flex-1 ml-[3.75rem] min-h-screen">
           {children}
         </main>
       </body>

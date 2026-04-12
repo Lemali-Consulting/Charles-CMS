@@ -1,0 +1,3 @@
+[submodule "external/nexus"]
+	path = external/nexus
+	url = https://github.com/maxachis/nexus

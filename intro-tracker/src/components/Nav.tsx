@@ -4,10 +4,13 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
 const links = [
-  { href: "/", label: "Dashboard" },
-  { href: "/log", label: "Log Introduction" },
-  { href: "/trends", label: "Trends" },
-  { href: "/export", label: "Export" },
+  { href: "/", label: "Dashboard", icon: "\u25A9" },
+  { href: "/people", label: "People", icon: "\u263A" },
+  { href: "/organizations", label: "Organizations", icon: "\u2616" },
+  { href: "/relationships", label: "Relationships", icon: "\u2194" },
+  { href: "/interactions", label: "Interactions", icon: "\u260E" },
+  { href: "/trends", label: "Trends", icon: "\u2197" },
+  { href: "/export", label: "Export", icon: "\u21E9" },
 ];
 
 export default function Nav() {
@@ -23,31 +26,38 @@ export default function Nav() {
   }
 
   return (
-    <nav className="bg-gray-900 text-white">
-      <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-8">
-        <span className="font-bold text-lg tracking-tight">IntroTracker</span>
-        <div className="flex gap-1 flex-1">
-          {links.map((link) => (
+    <aside className="nav-rail" aria-label="Primary navigation">
+      <div className="rail-brand">
+        <span className="rail-brand-icon">C</span>
+      </div>
+      <nav className="rail-nav">
+        {links.map((link) => {
+          const isActive = link.href === "/"
+            ? pathname === "/"
+            : pathname.startsWith(link.href);
+          return (
             <Link
               key={link.href}
               href={link.href}
-              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                pathname === link.href
-                  ? "bg-white/15 text-white"
-                  : "text-gray-300 hover:text-white hover:bg-white/10"
-              }`}
+              className={`rail-link${isActive ? " active" : ""}`}
+              title={link.label}
             >
-              {link.label}
+              <span className="rail-icon" aria-hidden="true">{link.icon}</span>
+              <span className="rail-label">{link.label}</span>
             </Link>
-          ))}
-        </div>
+          );
+        })}
+      </nav>
+      <div className="rail-foot">
         <button
           onClick={handleLogout}
-          className="px-3 py-1.5 rounded text-sm font-medium text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
+          className="rail-link rail-btn"
+          title="Sign out"
         >
-          Sign out
+          <span className="rail-icon" aria-hidden="true">{"\u2192"}</span>
+          <span className="rail-label">Sign out</span>
         </button>
       </div>
-    </nav>
+    </aside>
   );
 }
