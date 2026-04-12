@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getPerson, updatePerson, setPersonTags } from "@/lib/db";
+import { getPerson, updatePerson, setPersonCategories } from "@/lib/db";
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -11,9 +11,9 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const data = await request.json();
-  if (data.tags !== undefined) {
-    setPersonTags(Number(id), data.tags);
-    delete data.tags;
+  if (data.categories !== undefined) {
+    setPersonCategories(Number(id), data.categories);
+    delete data.categories;
   }
   const person = updatePerson(Number(id), data);
   if (!person) return NextResponse.json({ error: "Not found" }, { status: 404 });

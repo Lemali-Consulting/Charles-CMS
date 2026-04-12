@@ -3,10 +3,9 @@
 import { useState, useEffect, useCallback } from "react";
 
 interface Person { id: number; first_name: string; last_name: string }
-interface Org { id: number; name: string }
 interface NamedEntity { id: number; name: string }
 
-interface Interaction {
+interface Introduction {
   id: number;
   interaction_type_id: number;
   interaction_type_name: string;
@@ -15,43 +14,35 @@ interface Interaction {
   date: string;
   notes: string;
   people: Person[];
-  organizations: Org[];
+  organizations: { id: number; name: string }[];
   created_at: string;
   updated_at: string;
 }
 
-export default function InteractionsPage() {
-  const [interactions, setInteractions] = useState<Interaction[]>([]);
-  const [types, setTypes] = useState<NamedEntity[]>([]);
+export default function IntroductionsPage() {
+  const [introductions, setIntroductions] = useState<Introduction[]>([]);
   const [mediums, setMediums] = useState<NamedEntity[]>([]);
   const [allPeople, setAllPeople] = useState<Person[]>([]);
-  const [allOrgs, setAllOrgs] = useState<Org[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [showNewForm, setShowNewForm] = useState(false);
-  const [filterType, setFilterType] = useState<number | "">("");
 
   const load = useCallback(async () => {
-    const params = filterType ? `?type_id=${filterType}` : "";
-    const [intRes, typesRes, medRes, peopleRes, orgsRes] = await Promise.all([
-      fetch(`/api/interactions${params}`),
-      fetch("/api/interactions/types"),
+    const [intRes, medRes, peopleRes] = await Promise.all([
+      fetch("/api/interactions"),
       fetch("/api/interactions/mediums"),
       fetch("/api/people"),
-      fetch("/api/organizations"),
     ]);
-    setInteractions(await intRes.json());
-    setTypes(await typesRes.json());
+    setIntroductions(await intRes.json());
     setMediums(await medRes.json());
     setAllPeople(await peopleRes.json());
-    setAllOrgs(await orgsRes.json());
-  }, [filterType]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
-  const selected = interactions.find((i) => i.id === selectedId) || null;
+  const selected = introductions.find((i) => i.id === selectedId) || null;
 
   async function handleDelete(id: number) {
-    if (!confirm("Delete this interaction?")) return;
+    if (!confirm("Delete this introduction?")) return;
     await fetch(`/api/interactions?id=${id}`, { method: "DELETE" });
     setSelectedId(null);
     load();
@@ -61,99 +52,100 @@ export default function InteractionsPage() {
     <div className="crm-layout">
       <div className="crm-list-panel">
         <div className="crm-list-header">
-          <h1>Interactions</h1>
-          <div className="flex gap-2">
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value ? Number(e.target.value) : "")}
-              className="flex-1 border border-gray-300 rounded-md px-2.5 py-1.5 text-sm"
-            >
-              <option value="">All types</option>
-              {types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </select>
-            <button onClick={() => setShowNewForm(true)} className="crm-btn crm-btn-primary">+ Add</button>
-          </div>
+          <h1>Introductions</h1>
+          <button onClick={() => setShowNewForm(true)} className="crm-btn crm-btn-primary">+ Add</button>
           {showNewForm && (
-            <NewInteractionForm
-              types={types}
+            <NewIntroductionForm
               mediums={mediums}
               allPeople={allPeople}
-              allOrgs={allOrgs}
               onCreated={(id) => { setShowNewForm(false); load().then(() => setSelectedId(id)); }}
               onCancel={() => setShowNewForm(false)}
             />
           )}
         </div>
         <div className="crm-list-scroll">
-          {interactions.map((inter) => (
-            <div
-              key={inter.id}
-              className={`crm-list-item${selectedId === inter.id ? " selected" : ""}`}
-              onClick={() => setSelectedId(inter.id)}
-            >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm">{inter.interaction_type_name}</span>
-                  <span className="text-xs text-gray-400">{inter.date}</span>
-                </div>
-                <div className="text-xs text-gray-500 truncate">
-                  {inter.people.map(p => `${p.first_name} ${p.last_name}`).join(", ")}
-                  {inter.people.length > 0 && inter.organizations.length > 0 && " / "}
-                  {inter.organizations.map(o => o.name).join(", ")}
+          {introductions.map((intro) => {
+            const firstPerson = intro.people[0];
+            const others = intro.people.slice(1);
+            return (
+              <div
+                key={intro.id}
+                className={`crm-list-item${selectedId === intro.id ? " selected" : ""}`}
+                onClick={() => setSelectedId(intro.id)}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-sm truncate">
+                      {firstPerson
+                        ? `${firstPerson.first_name} ${firstPerson.last_name}`
+                        : "Unknown"}
+                      {others.length > 0 && (
+                        <span className="text-gray-500">
+                          {" \u2192 "}
+                          {others.map(p => `${p.first_name} ${p.last_name}`).join(", ")}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-400 flex gap-2">
+                    <span>{intro.date}</span>
+                    {intro.medium_name && <span>via {intro.medium_name}</span>}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-          {interactions.length === 0 && (
-            <div className="p-4 text-center text-gray-400 text-sm">No interactions found</div>
+            );
+          })}
+          {introductions.length === 0 && (
+            <div className="p-4 text-center text-gray-400 text-sm">No introductions yet</div>
           )}
         </div>
       </div>
 
       {selected ? (
-        <InteractionDetail
-          interaction={selected}
-          types={types}
+        <IntroductionDetail
+          introduction={selected}
           mediums={mediums}
           allPeople={allPeople}
-          allOrgs={allOrgs}
           onUpdate={load}
           onDelete={() => handleDelete(selected.id)}
         />
       ) : (
-        <div className="crm-empty-detail">Select an interaction to view details</div>
+        <div className="crm-empty-detail">Select an introduction to view details</div>
       )}
     </div>
   );
 }
 
-function NewInteractionForm({ types, mediums, allPeople, allOrgs, onCreated, onCancel }: {
-  types: NamedEntity[];
+function NewIntroductionForm({ mediums, allPeople, onCreated, onCancel }: {
   mediums: NamedEntity[];
   allPeople: Person[];
-  allOrgs: Org[];
   onCreated: (id: number) => void;
   onCancel: () => void;
 }) {
-  const [typeId, setTypeId] = useState<number>(types[0]?.id || 0);
-  const [mediumId, setMediumId] = useState<number | "">("");
+  const [person1Id, setPerson1Id] = useState<number | "">("");
+  const [otherPersonIds, setOtherPersonIds] = useState<number[]>([]);
+  const emailMedium = mediums.find(m => m.name === "Email");
+  const [mediumId, setMediumId] = useState<number>(emailMedium?.id || mediums[0]?.id || 0);
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = useState("");
-  const [personIds, setPersonIds] = useState<number[]>([]);
-  const [orgIds, setOrgIds] = useState<number[]>([]);
+
+  useEffect(() => {
+    if (emailMedium) setMediumId(emailMedium.id);
+  }, [emailMedium]);
+
+  const availableForOthers = allPeople.filter(p => p.id !== person1Id);
 
   async function handleSubmit() {
-    if (!typeId || !date) return;
+    if (!person1Id || otherPersonIds.length === 0 || !date) return;
+    const person_ids = [person1Id as number, ...otherPersonIds];
     const res = await fetch("/api/interactions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        interaction_type_id: typeId,
         medium_id: mediumId || null,
         date,
         notes,
-        person_ids: personIds,
-        organization_ids: orgIds,
+        person_ids,
       }),
     });
     if (res.ok) {
@@ -164,32 +156,43 @@ function NewInteractionForm({ types, mediums, allPeople, allOrgs, onCreated, onC
 
   return (
     <div className="mt-3 p-3 bg-gray-50 rounded-md border border-gray-200 space-y-2">
-      <div className="grid grid-cols-2 gap-2">
-        <select value={typeId} onChange={(e) => setTypeId(Number(e.target.value))} className="border border-gray-300 rounded-md px-2 py-1.5 text-sm">
-          {types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+      <div className="crm-field">
+        <label className="text-xs font-medium text-gray-600">Person 1</label>
+        <select
+          value={person1Id}
+          onChange={(e) => {
+            setPerson1Id(e.target.value ? Number(e.target.value) : "");
+            setOtherPersonIds(ids => ids.filter(id => id !== Number(e.target.value)));
+          }}
+          className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm"
+        >
+          <option value="">-- Select person --</option>
+          {allPeople.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
         </select>
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="border border-gray-300 rounded-md px-2 py-1.5 text-sm" />
       </div>
-      <select value={mediumId} onChange={(e) => setMediumId(e.target.value ? Number(e.target.value) : "")} className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm">
-        <option value="">-- Medium --</option>
-        {mediums.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-      </select>
-      <select
-        multiple
-        value={personIds.map(String)}
-        onChange={(e) => setPersonIds(Array.from(e.target.selectedOptions, o => Number(o.value)))}
-        className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm h-20"
-      >
-        {allPeople.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
-      </select>
-      <select
-        multiple
-        value={orgIds.map(String)}
-        onChange={(e) => setOrgIds(Array.from(e.target.selectedOptions, o => Number(o.value)))}
-        className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm h-20"
-      >
-        {allOrgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-      </select>
+      <div className="crm-field">
+        <label className="text-xs font-medium text-gray-600">Introduced to</label>
+        <select
+          multiple
+          value={otherPersonIds.map(String)}
+          onChange={(e) => setOtherPersonIds(Array.from(e.target.selectedOptions, o => Number(o.value)))}
+          className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm h-20"
+        >
+          {availableForOthers.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
+        </select>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="text-xs font-medium text-gray-600">Medium</label>
+          <select value={mediumId} onChange={(e) => setMediumId(Number(e.target.value))} className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm">
+            {mediums.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs font-medium text-gray-600">Date</label>
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm" />
+        </div>
+      </div>
       <textarea
         placeholder="Notes..."
         value={notes}
@@ -205,37 +208,31 @@ function NewInteractionForm({ types, mediums, allPeople, allOrgs, onCreated, onC
   );
 }
 
-function InteractionDetail({ interaction, types, mediums, allPeople, allOrgs, onUpdate, onDelete }: {
-  interaction: Interaction;
-  types: NamedEntity[];
+function IntroductionDetail({ introduction, mediums, allPeople, onUpdate, onDelete }: {
+  introduction: Introduction;
   mediums: NamedEntity[];
   allPeople: Person[];
-  allOrgs: Org[];
   onUpdate: () => void;
   onDelete: () => void;
 }) {
   const [form, setForm] = useState({
-    interaction_type_id: interaction.interaction_type_id,
-    medium_id: interaction.medium_id,
-    date: interaction.date,
-    notes: interaction.notes,
-    person_ids: interaction.people.map(p => p.id),
-    organization_ids: interaction.organizations.map(o => o.id),
+    medium_id: introduction.medium_id,
+    date: introduction.date,
+    notes: introduction.notes,
+    person_ids: introduction.people.map(p => p.id),
   });
 
   useEffect(() => {
     setForm({
-      interaction_type_id: interaction.interaction_type_id,
-      medium_id: interaction.medium_id,
-      date: interaction.date,
-      notes: interaction.notes,
-      person_ids: interaction.people.map(p => p.id),
-      organization_ids: interaction.organizations.map(o => o.id),
+      medium_id: introduction.medium_id,
+      date: introduction.date,
+      notes: introduction.notes,
+      person_ids: introduction.people.map(p => p.id),
     });
-  }, [interaction]);
+  }, [introduction]);
 
   async function save(data: Record<string, unknown>) {
-    await fetch(`/api/interactions/${interaction.id}`, {
+    await fetch(`/api/interactions/${introduction.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
@@ -243,25 +240,39 @@ function InteractionDetail({ interaction, types, mediums, allPeople, allOrgs, on
     onUpdate();
   }
 
+  const firstPerson = introduction.people[0];
+  const others = introduction.people.slice(1);
+
   return (
     <div className="crm-detail-panel">
       <div className="flex items-center justify-between mb-4">
-        <h2>{interaction.interaction_type_name} &mdash; {interaction.date}</h2>
+        <h2>
+          {firstPerson
+            ? `${firstPerson.first_name} ${firstPerson.last_name}`
+            : "Introduction"}
+          {others.length > 0 && (
+            <span className="text-gray-500 font-normal">
+              {" \u2192 "}
+              {others.map(p => `${p.first_name} ${p.last_name}`).join(", ")}
+            </span>
+          )}
+        </h2>
         <button onClick={onDelete} className="crm-btn crm-btn-danger">Delete</button>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="crm-field">
-          <label>Type</label>
+          <label>Medium</label>
           <select
-            value={form.interaction_type_id}
+            value={form.medium_id ?? ""}
             onChange={(e) => {
-              const val = Number(e.target.value);
-              setForm({ ...form, interaction_type_id: val });
-              save({ interaction_type_id: val });
+              const val = e.target.value ? Number(e.target.value) : null;
+              setForm({ ...form, medium_id: val });
+              save({ medium_id: val });
             }}
           >
-            {types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            <option value="">-- None --</option>
+            {mediums.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
         </div>
         <div className="crm-field">
@@ -273,21 +284,6 @@ function InteractionDetail({ interaction, types, mediums, allPeople, allOrgs, on
             onBlur={() => save({ date: form.date })}
           />
         </div>
-      </div>
-
-      <div className="crm-field">
-        <label>Medium</label>
-        <select
-          value={form.medium_id ?? ""}
-          onChange={(e) => {
-            const val = e.target.value ? Number(e.target.value) : null;
-            setForm({ ...form, medium_id: val });
-            save({ medium_id: val });
-          }}
-        >
-          <option value="">-- None --</option>
-          {mediums.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-        </select>
       </div>
 
       <div className="crm-field">
@@ -312,22 +308,6 @@ function InteractionDetail({ interaction, types, mediums, allPeople, allOrgs, on
           className="h-24"
         >
           {allPeople.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
-        </select>
-      </div>
-
-      <div className="crm-field">
-        <label>Organizations</label>
-        <select
-          multiple
-          value={form.organization_ids.map(String)}
-          onChange={(e) => {
-            const ids = Array.from(e.target.selectedOptions, o => Number(o.value));
-            setForm({ ...form, organization_ids: ids });
-            save({ organization_ids: ids });
-          }}
-          className="h-24"
-        >
-          {allOrgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
         </select>
       </div>
     </div>

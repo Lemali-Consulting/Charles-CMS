@@ -8,7 +8,7 @@ const links = [
   { href: "/people", label: "People", icon: "\u263A" },
   { href: "/organizations", label: "Organizations", icon: "\u2616" },
   { href: "/relationships", label: "Relationships", icon: "\u2194" },
-  { href: "/interactions", label: "Interactions", icon: "\u260E" },
+  { href: "/interactions", label: "Introductions", icon: "\u260E" },
   { href: "/trends", label: "Trends", icon: "\u2197" },
   { href: "/export", label: "Export", icon: "\u21E9" },
 ];

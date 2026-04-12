@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 
+const CATEGORIES = ["Investor", "Customer", "Talent"] as const;
+
 interface Person {
   id: number;
   first_name: string;
@@ -9,7 +11,7 @@ interface Person {
   email: string;
   linkedin_url: string;
   notes: string;
-  tags: { id: number; name: string }[];
+  categories: { id: number; name: string }[];
   created_at: string;
   updated_at: string;
 }
@@ -109,10 +111,10 @@ export default function PeoplePage() {
                 <div className="font-medium truncate">{person.first_name} {person.last_name}</div>
                 {person.email && <div className="text-xs text-gray-500 truncate">{person.email}</div>}
               </div>
-              {person.tags.length > 0 && (
+              {person.categories.length > 0 && (
                 <div className="flex gap-1 flex-shrink-0">
-                  {person.tags.slice(0, 2).map((t) => (
-                    <span key={t.id} className="crm-tag">{t.name}</span>
+                  {person.categories.map((c) => (
+                    <span key={c.id} className="crm-tag">{c.name}</span>
                   ))}
                 </div>
               )}
@@ -149,7 +151,6 @@ function PersonDetail({ person, onUpdate, onDelete }: {
     linkedin_url: person.linkedin_url,
     notes: person.notes,
   });
-  const [tagInput, setTagInput] = useState("");
   const [interactions, setInteractions] = useState<Array<{
     id: number;
     date: string;
@@ -171,7 +172,6 @@ function PersonDetail({ person, onUpdate, onDelete }: {
       notes: person.notes,
     });
     fetch(`/api/interactions?person_id=${person.id}`).then(r => r.json()).then(setInteractions);
-    // Load relationships for this person
     Promise.all([
       fetch("/api/relationships/person-person").then(r => r.json()),
       fetch("/api/relationships/org-person").then(r => r.json()),
@@ -192,24 +192,15 @@ function PersonDetail({ person, onUpdate, onDelete }: {
     onUpdate();
   }
 
-  async function addTag() {
-    if (!tagInput.trim()) return;
-    const newTags = [...person.tags.map(t => t.name), tagInput.trim()];
+  async function toggleCategory(categoryName: string) {
+    const current = person.categories.map(c => c.name);
+    const newCategories = current.includes(categoryName)
+      ? current.filter(c => c !== categoryName)
+      : [...current, categoryName];
     await fetch(`/api/people/${person.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tags: newTags }),
-    });
-    setTagInput("");
-    onUpdate();
-  }
-
-  async function removeTag(tagName: string) {
-    const newTags = person.tags.filter(t => t.name !== tagName).map(t => t.name);
-    await fetch(`/api/people/${person.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tags: newTags }),
+      body: JSON.stringify({ categories: newCategories }),
     });
     onUpdate();
   }
@@ -269,24 +260,24 @@ function PersonDetail({ person, onUpdate, onDelete }: {
       </div>
 
       <div className="crm-field">
-        <label>Tags</label>
-        <div className="flex flex-wrap gap-1 mb-2">
-          {person.tags.map((tag) => (
-            <span key={tag.id} className="crm-tag">
-              {tag.name}
-              <button onClick={() => removeTag(tag.name)}>&times;</button>
-            </span>
-          ))}
-        </div>
+        <label>Categories</label>
         <div className="flex gap-2">
-          <input
-            placeholder="Add tag..."
-            value={tagInput}
-            onChange={(e) => setTagInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && addTag()}
-            className="flex-1"
-          />
-          <button onClick={addTag} className="crm-btn">Add</button>
+          {CATEGORIES.map((cat) => {
+            const active = person.categories.some(c => c.name === cat);
+            return (
+              <button
+                key={cat}
+                onClick={() => toggleCategory(cat)}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  active
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {cat}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -313,9 +304,9 @@ function PersonDetail({ person, onUpdate, onDelete }: {
         </div>
       )}
 
-      <div className="crm-section-title">Recent Interactions</div>
+      <div className="crm-section-title">Recent Introductions</div>
       {interactions.length === 0 ? (
-        <p className="text-sm text-gray-400">No interactions yet</p>
+        <p className="text-sm text-gray-400">No introductions yet</p>
       ) : (
         <div className="space-y-2">
           {interactions.slice(0, 10).map((i) => (

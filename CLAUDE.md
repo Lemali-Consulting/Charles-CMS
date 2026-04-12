@@ -1,8 +1,8 @@
 After any significant change, commit and push to GitHub.
 
-# Charles CMS — CRM
+# Charles CMS — Introduction Tracker
 
-A CRM web app for tracking people, organizations, relationships, and interactions. Built for Charles to manage networking contacts and activity.
+A CRM web app focused on tracking introductions between investors, customers, and talent. Built for Charles to manage networking contacts and introduction activity.
 
 ## Tech Stack
 
@@ -20,16 +20,16 @@ src/
 │   ├── people/page.tsx           # People list + detail (two-panel)
 │   ├── organizations/page.tsx    # Organizations list + detail (two-panel)
 │   ├── relationships/page.tsx    # Person-Person, Org-Person, Org-Org relationships
-│   ├── interactions/page.tsx     # Interactions list + detail (two-panel)
-│   ├── trends/page.tsx           # Trends analysis (line charts)
+│   ├── interactions/page.tsx     # Introductions list + detail (two-panel)
+│   ├── trends/page.tsx           # Trends analysis with category tabs
 │   ├── export/page.tsx           # CSV export
 │   ├── login/page.tsx            # Password auth
 │   └── api/
-│       ├── people/               # CRUD + [id] + tags
+│       ├── people/               # CRUD + [id] + categories
 │       ├── organizations/        # CRUD + [id] + types
-│       ├── interactions/         # CRUD + [id] + types + mediums
+│       ├── interactions/         # Introduction creation + mediums
 │       ├── relationships/        # person-person, org-person, org-org + types
-│       ├── stats/                # Monthly aggregation
+│       ├── stats/                # Monthly aggregation + category breakdowns
 │       └── auth/                 # login, logout
 ├── components/                   # Nav (side rail), MonthlySummary, TrendChart
 └── lib/
@@ -50,21 +50,21 @@ The SQLite database (`crm.db`) auto-initializes on first run with all tables and
 
 ## Data Model
 
-**Core entities**: `people`, `organizations`
-**Interactions**: `interactions` linked to people/orgs via junction tables (`interaction_people`, `interaction_organizations`), with `interaction_types` and `interaction_mediums`
-**Relationships**: `relationships_person_person`, `relationships_org_person`, `relationships_org_org` — each with typed relationship types
-**Supporting**: `person_tags`, `org_types`, and various relationship type tables
+**Core entities**: `people` (with fixed categories: Investor, Customer, Talent), `organizations`
+**Introductions**: `interactions` table (type always "Introduction"), linked to people via `interaction_people`, with `interaction_mediums` (Email default)
+**Relationships**: `relationships_person_person`, `relationships_org_person`, `relationships_org_org` — "Introduced" type auto-created when logging introductions
+**Supporting**: `person_categories`, `person_category_links`, `org_types`, and various relationship type tables
 
 ## Key Features
 
 - **Side navbar**: Expandable CSS-based rail (icons-only collapsed, labels on hover)
-- **People**: Two-panel CRUD with tags, relationships, interaction history
+- **People**: Two-panel CRUD with category toggles (Investor/Customer/Talent), relationships, introduction history
 - **Organizations**: Two-panel CRUD with types, related people/orgs
-- **Relationships**: Person-Person, Org-Person, Org-Org with custom types
-- **Interactions**: Two-panel CRUD linking people/orgs, with types and mediums
-- **Dashboard**: Stat cards per interaction type, monthly bar chart
-- **Trends**: Line charts (total + per-type over time), summary stats
-- **Export**: CSV download of all interactions
+- **Relationships**: Person-Person, Org-Person, Org-Org with custom types; "Introduced" auto-created on intro logging
+- **Introductions**: Simplified form — Person 1, Person 2+, Medium (default Email), Date (default today), Notes
+- **Dashboard**: Stat cards (People, Orgs, This Month, Investor/Customer/Talent intros), monthly bar chart
+- **Trends**: Tabbed view (All/Investor/Customer/Talent) with Total, Avg/Month, Months Tracked, line chart
+- **Export**: CSV download of all introductions
 
 ## External References
 

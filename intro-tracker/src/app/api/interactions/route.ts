@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getInteractions, createInteraction, deleteInteraction } from "@/lib/db";
+import { getInteractions, createIntroduction, deleteInteraction } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   const person_id = request.nextUrl.searchParams.get("person_id");
@@ -14,11 +14,19 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const data = await request.json();
-  if (!data.interaction_type_id || !data.date) {
-    return NextResponse.json({ error: "interaction_type_id and date are required" }, { status: 400 });
+  if (!data.person_ids || data.person_ids.length < 2) {
+    return NextResponse.json({ error: "At least 2 people are required for an introduction" }, { status: 400 });
   }
-  const interaction = createInteraction(data);
-  return NextResponse.json(interaction, { status: 201 });
+  if (!data.date) {
+    return NextResponse.json({ error: "date is required" }, { status: 400 });
+  }
+  const introduction = createIntroduction({
+    medium_id: data.medium_id,
+    date: data.date,
+    notes: data.notes,
+    person_ids: data.person_ids,
+  });
+  return NextResponse.json(introduction, { status: 201 });
 }
 
 export async function DELETE(request: NextRequest) {

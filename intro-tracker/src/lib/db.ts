@@ -32,7 +32,7 @@ function initSchema(db: Database.Database) {
       FOREIGN KEY (org_type_id) REFERENCES org_types(id) ON DELETE SET NULL
     );
 
-    CREATE TABLE IF NOT EXISTS person_tags (
+    CREATE TABLE IF NOT EXISTS person_categories (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL UNIQUE
     );
@@ -49,12 +49,12 @@ function initSchema(db: Database.Database) {
       UNIQUE(first_name, last_name)
     );
 
-    CREATE TABLE IF NOT EXISTS person_tag_links (
+    CREATE TABLE IF NOT EXISTS person_category_links (
       person_id INTEGER NOT NULL,
-      tag_id INTEGER NOT NULL,
-      PRIMARY KEY (person_id, tag_id),
+      category_id INTEGER NOT NULL,
+      PRIMARY KEY (person_id, category_id),
       FOREIGN KEY (person_id) REFERENCES people(id) ON DELETE CASCADE,
-      FOREIGN KEY (tag_id) REFERENCES person_tags(id) ON DELETE CASCADE
+      FOREIGN KEY (category_id) REFERENCES person_categories(id) ON DELETE CASCADE
     );
 
     CREATE TABLE IF NOT EXISTS interaction_types (
@@ -161,19 +161,31 @@ function initSchema(db: Database.Database) {
   // Seed default interaction types if empty
   const typeCount = db.prepare("SELECT COUNT(*) as c FROM interaction_types").get() as { c: number };
   if (typeCount.c === 0) {
-    const insert = db.prepare("INSERT INTO interaction_types (name) VALUES (?)");
-    for (const name of ["Introduction", "Meeting", "Email", "Call", "Coffee", "Event"]) {
-      insert.run(name);
-    }
+    db.prepare("INSERT INTO interaction_types (name) VALUES (?)").run("Introduction");
   }
 
   // Seed default mediums if empty
   const mediumCount = db.prepare("SELECT COUNT(*) as c FROM interaction_mediums").get() as { c: number };
   if (mediumCount.c === 0) {
     const insert = db.prepare("INSERT INTO interaction_mediums (name) VALUES (?)");
-    for (const name of ["In Person", "Email", "Phone", "Video Call", "LinkedIn", "Other"]) {
+    for (const name of ["Email", "In Person", "Phone", "Video Call", "LinkedIn", "Other"]) {
       insert.run(name);
     }
+  }
+
+  // Seed person categories if empty
+  const catCount = db.prepare("SELECT COUNT(*) as c FROM person_categories").get() as { c: number };
+  if (catCount.c === 0) {
+    const insert = db.prepare("INSERT INTO person_categories (name) VALUES (?)");
+    for (const name of ["Investor", "Customer", "Talent"]) {
+      insert.run(name);
+    }
+  }
+
+  // Seed "Introduced" relationship type if not present
+  const introducedType = db.prepare("SELECT id FROM person_person_relationship_types WHERE name = 'Introduced'").get();
+  if (!introducedType) {
+    db.prepare("INSERT OR IGNORE INTO person_person_relationship_types (name) VALUES ('Introduced')").run();
   }
 }
 
@@ -186,7 +198,7 @@ export interface Person {
   email: string;
   linkedin_url: string;
   notes: string;
-  tags: { id: number; name: string }[];
+  categories: { id: number; name: string }[];
   created_at: string;
   updated_at: string;
 }
@@ -270,14 +282,14 @@ export function getPeople(search?: string): Person[] {
   } else {
     rows = db.prepare("SELECT * FROM people ORDER BY last_name, first_name").all() as Record<string, unknown>[];
   }
-  return rows.map(hydratePersonTags);
+  return rows.map(hydratePersonCategories);
 }
 
 export function getPerson(id: number): Person | null {
   const db = getDb();
   const row = db.prepare("SELECT * FROM people WHERE id = ?").get(id) as Record<string, unknown> | undefined;
   if (!row) return null;
-  return hydratePersonTags(row);
+  return hydratePersonCategories(row);
 }
 
 export function createPerson(data: { first_name: string; last_name: string; email?: string; linkedin_url?: string; notes?: string }): Person {
@@ -315,28 +327,29 @@ export function deletePerson(id: number): boolean {
   return getDb().prepare("DELETE FROM people WHERE id = ?").run(id).changes > 0;
 }
 
-function hydratePersonTags(row: Record<string, unknown>): Person {
+function hydratePersonCategories(row: Record<string, unknown>): Person {
   const db = getDb();
-  const tags = db.prepare(`
-    SELECT pt.id, pt.name FROM person_tags pt
-    JOIN person_tag_links ptl ON ptl.tag_id = pt.id
-    WHERE ptl.person_id = ?
+  const categories = db.prepare(`
+    SELECT pc.id, pc.name FROM person_categories pc
+    JOIN person_category_links pcl ON pcl.category_id = pc.id
+    WHERE pcl.person_id = ?
   `).all(row.id as number) as { id: number; name: string }[];
-  return { ...(row as unknown as Omit<Person, "tags">), tags };
+  return { ...(row as unknown as Omit<Person, "categories">), categories };
 }
 
-export function setPersonTags(personId: number, tagNames: string[]): void {
+export function setPersonCategories(personId: number, categoryNames: string[]): void {
   const db = getDb();
-  db.prepare("DELETE FROM person_tag_links WHERE person_id = ?").run(personId);
-  for (const name of tagNames) {
-    db.prepare("INSERT OR IGNORE INTO person_tags (name) VALUES (?)").run(name);
-    const tag = db.prepare("SELECT id FROM person_tags WHERE name = ?").get(name) as { id: number };
-    db.prepare("INSERT INTO person_tag_links (person_id, tag_id) VALUES (?, ?)").run(personId, tag.id);
+  db.prepare("DELETE FROM person_category_links WHERE person_id = ?").run(personId);
+  for (const name of categoryNames) {
+    const cat = db.prepare("SELECT id FROM person_categories WHERE name = ?").get(name) as { id: number } | undefined;
+    if (cat) {
+      db.prepare("INSERT INTO person_category_links (person_id, category_id) VALUES (?, ?)").run(personId, cat.id);
+    }
   }
 }
 
-export function getAllPersonTags(): NamedEntity[] {
-  return getDb().prepare("SELECT id, name FROM person_tags ORDER BY name").all() as NamedEntity[];
+export function getPersonCategories(): NamedEntity[] {
+  return getDb().prepare("SELECT id, name FROM person_categories ORDER BY name").all() as NamedEntity[];
 }
 
 // ── Organizations ──────────────────────────────────────
@@ -409,7 +422,7 @@ export function createOrgType(name: string): NamedEntity {
   return { id: result.lastInsertRowid as number, name };
 }
 
-// ── Interactions ───────────────────────────────────────
+// ── Interactions / Introductions ──────────────────────
 
 export function getInteractions(filters?: { person_id?: number; org_id?: number; type_id?: number }): Interaction[] {
   const db = getDb();
@@ -449,6 +462,75 @@ export function getInteraction(id: number): Interaction | null {
   `).get(id) as Record<string, unknown> | undefined;
   if (!row) return null;
   return hydrateInteraction(row);
+}
+
+function getIntroductionTypeId(): number {
+  const db = getDb();
+  const row = db.prepare("SELECT id FROM interaction_types WHERE name = 'Introduction'").get() as { id: number };
+  return row.id;
+}
+
+function getIntroducedRelationshipTypeId(): number {
+  const db = getDb();
+  const row = db.prepare("SELECT id FROM person_person_relationship_types WHERE name = 'Introduced'").get() as { id: number };
+  return row.id;
+}
+
+export function createIntroduction(data: {
+  medium_id?: number;
+  date: string;
+  notes?: string;
+  person_ids: number[];
+}): Interaction {
+  const db = getDb();
+  const introTypeId = getIntroductionTypeId();
+
+  // If no medium specified, default to Email
+  let mediumId = data.medium_id;
+  if (!mediumId) {
+    const emailMedium = db.prepare("SELECT id FROM interaction_mediums WHERE name = 'Email'").get() as { id: number } | undefined;
+    if (emailMedium) mediumId = emailMedium.id;
+  }
+
+  const result = db.prepare(`
+    INSERT INTO interactions (interaction_type_id, medium_id, date, notes)
+    VALUES (@interaction_type_id, @medium_id, @date, @notes)
+  `).run({
+    interaction_type_id: introTypeId,
+    medium_id: mediumId || null,
+    date: data.date,
+    notes: data.notes || "",
+  });
+  const id = result.lastInsertRowid as number;
+
+  // Link people
+  if (data.person_ids.length > 0) {
+    const stmt = db.prepare("INSERT INTO interaction_people (interaction_id, person_id) VALUES (?, ?)");
+    for (const pid of data.person_ids) stmt.run(id, pid);
+  }
+
+  // Auto-create "Introduced" relationships for pairs without existing relationships
+  if (data.person_ids.length >= 2) {
+    const introducedTypeId = getIntroducedRelationshipTypeId();
+    for (let i = 0; i < data.person_ids.length; i++) {
+      for (let j = i + 1; j < data.person_ids.length; j++) {
+        const [p1, p2] = data.person_ids[i] < data.person_ids[j]
+          ? [data.person_ids[i], data.person_ids[j]]
+          : [data.person_ids[j], data.person_ids[i]];
+        // Check if any relationship exists between this pair
+        const existing = db.prepare(
+          "SELECT id FROM relationships_person_person WHERE person_1_id = ? AND person_2_id = ?"
+        ).get(p1, p2);
+        if (!existing) {
+          db.prepare(
+            "INSERT INTO relationships_person_person (person_1_id, person_2_id, relationship_type_id) VALUES (?, ?, ?)"
+          ).run(p1, p2, introducedTypeId);
+        }
+      }
+    }
+  }
+
+  return getInteraction(id)!;
 }
 
 export function createInteraction(data: {
@@ -738,42 +820,72 @@ export function getMonthlyInteractionStats(): MonthlyStat[] {
   const rows = db.prepare(`
     SELECT
       strftime('%Y-%m', i.date) as month,
-      it.name as type_name,
       COUNT(*) as count
     FROM interactions i
-    JOIN interaction_types it ON i.interaction_type_id = it.id
-    GROUP BY month, type_name
+    GROUP BY month
     ORDER BY month ASC
-  `).all() as { month: string; type_name: string; count: number }[];
+  `).all() as { month: string; count: number }[];
 
-  const monthMap = new Map<string, MonthlyStat>();
-  for (const row of rows) {
-    if (!monthMap.has(row.month)) {
-      monthMap.set(row.month, { month: row.month, total: 0, by_type: {} });
-    }
-    const stat = monthMap.get(row.month)!;
-    stat.by_type[row.type_name] = row.count;
-    stat.total += row.count;
-  }
-  return Array.from(monthMap.values());
+  return rows.map(row => ({
+    month: row.month,
+    total: row.count,
+    by_type: {},
+  }));
 }
 
-export function getCurrentMonthInteractionStats(): { total: number; by_type: Record<string, number> } {
+export function getCurrentMonthInteractionStats(): { total: number; by_category: Record<string, number> } {
   const db = getDb();
   const currentMonth = new Date().toISOString().slice(0, 7);
-  const rows = db.prepare(`
-    SELECT it.name as type_name, COUNT(*) as count
-    FROM interactions i
-    JOIN interaction_types it ON i.interaction_type_id = it.id
-    WHERE strftime('%Y-%m', i.date) = ?
-    GROUP BY type_name
-  `).all(currentMonth) as { type_name: string; count: number }[];
 
-  const result: { total: number; by_type: Record<string, number> } = { total: 0, by_type: {} };
-  for (const row of rows) {
-    result.by_type[row.type_name] = row.count;
-    result.total += row.count;
+  const totalRow = db.prepare(`
+    SELECT COUNT(*) as count FROM interactions
+    WHERE strftime('%Y-%m', date) = ?
+  `).get(currentMonth) as { count: number };
+
+  // Get intro counts by category for current month
+  const catRows = db.prepare(`
+    SELECT pc.name as category_name, COUNT(DISTINCT i.id) as count
+    FROM interactions i
+    JOIN interaction_people ip ON ip.interaction_id = i.id
+    JOIN person_category_links pcl ON pcl.person_id = ip.person_id
+    JOIN person_categories pc ON pc.id = pcl.category_id
+    WHERE strftime('%Y-%m', i.date) = ?
+    GROUP BY pc.name
+  `).all(currentMonth) as { category_name: string; count: number }[];
+
+  const by_category: Record<string, number> = {};
+  for (const row of catRows) {
+    by_category[row.category_name] = row.count;
   }
+
+  return { total: totalRow.count, by_category };
+}
+
+export function getMonthlyIntroStatsByCategory(): Record<string, MonthlyStat[]> {
+  const db = getDb();
+  const categories = getPersonCategories();
+  const result: Record<string, MonthlyStat[]> = {};
+
+  for (const cat of categories) {
+    const rows = db.prepare(`
+      SELECT
+        strftime('%Y-%m', i.date) as month,
+        COUNT(DISTINCT i.id) as count
+      FROM interactions i
+      JOIN interaction_people ip ON ip.interaction_id = i.id
+      JOIN person_category_links pcl ON pcl.person_id = ip.person_id
+      WHERE pcl.category_id = ?
+      GROUP BY month
+      ORDER BY month ASC
+    `).all(cat.id) as { month: string; count: number }[];
+
+    result[cat.name] = rows.map(row => ({
+      month: row.month,
+      total: row.count,
+      by_type: {},
+    }));
+  }
+
   return result;
 }
 
