@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import PersonTypeahead from "@/components/PersonTypeahead";
 
 interface Person { id: number; first_name: string; last_name: string }
 interface NamedEntity { id: number; name: string }
@@ -158,28 +159,52 @@ function NewIntroductionForm({ mediums, allPeople, onCreated, onCancel }: {
     <div className="mt-3 p-3 bg-gray-50 rounded-md border border-gray-200 space-y-2">
       <div className="crm-field">
         <label className="text-xs font-medium text-gray-600">Person 1</label>
-        <select
-          value={person1Id}
-          onChange={(e) => {
-            setPerson1Id(e.target.value ? Number(e.target.value) : "");
-            setOtherPersonIds(ids => ids.filter(id => id !== Number(e.target.value)));
-          }}
-          className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm"
-        >
-          <option value="">-- Select person --</option>
-          {allPeople.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
-        </select>
+        {person1Id ? (
+          <div className="flex items-center gap-2">
+            <span className="text-sm">
+              {allPeople.find(p => p.id === person1Id)?.first_name}{" "}
+              {allPeople.find(p => p.id === person1Id)?.last_name}
+            </span>
+            <button
+              type="button"
+              onClick={() => { setPerson1Id(""); setOtherPersonIds([]); }}
+              className="text-gray-400 hover:text-gray-600 text-sm"
+            >&times;</button>
+          </div>
+        ) : (
+          <PersonTypeahead
+            people={allPeople}
+            excludeIds={otherPersonIds}
+            placeholder="Type a name..."
+            onSelect={(p) => setPerson1Id(p.id)}
+          />
+        )}
       </div>
       <div className="crm-field">
         <label className="text-xs font-medium text-gray-600">Introduced to</label>
-        <select
-          multiple
-          value={otherPersonIds.map(String)}
-          onChange={(e) => setOtherPersonIds(Array.from(e.target.selectedOptions, o => Number(o.value)))}
-          className="w-full border border-gray-300 rounded-md px-2 py-1.5 text-sm h-20"
-        >
-          {availableForOthers.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
-        </select>
+        {otherPersonIds.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-1">
+            {otherPersonIds.map(id => {
+              const p = allPeople.find(x => x.id === id);
+              return p ? (
+                <span key={id} className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded-full">
+                  {p.first_name} {p.last_name}
+                  <button
+                    type="button"
+                    onClick={() => setOtherPersonIds(ids => ids.filter(x => x !== id))}
+                    className="hover:text-blue-900"
+                  >&times;</button>
+                </span>
+              ) : null;
+            })}
+          </div>
+        )}
+        <PersonTypeahead
+          people={allPeople}
+          excludeIds={[...(person1Id ? [person1Id as number] : []), ...otherPersonIds]}
+          placeholder="Type a name to add..."
+          onSelect={(p) => setOtherPersonIds(ids => [...ids, p.id])}
+        />
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div>
@@ -297,18 +322,35 @@ function IntroductionDetail({ introduction, mediums, allPeople, onUpdate, onDele
 
       <div className="crm-field">
         <label>People</label>
-        <select
-          multiple
-          value={form.person_ids.map(String)}
-          onChange={(e) => {
-            const ids = Array.from(e.target.selectedOptions, o => Number(o.value));
+        <div className="flex flex-wrap gap-1 mb-1">
+          {form.person_ids.map(id => {
+            const p = allPeople.find(x => x.id === id);
+            return p ? (
+              <span key={id} className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded-full">
+                {p.first_name} {p.last_name}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const ids = form.person_ids.filter(x => x !== id);
+                    setForm({ ...form, person_ids: ids });
+                    save({ person_ids: ids });
+                  }}
+                  className="hover:text-blue-900"
+                >&times;</button>
+              </span>
+            ) : null;
+          })}
+        </div>
+        <PersonTypeahead
+          people={allPeople}
+          excludeIds={form.person_ids}
+          placeholder="Add a person..."
+          onSelect={(p) => {
+            const ids = [...form.person_ids, p.id];
             setForm({ ...form, person_ids: ids });
             save({ person_ids: ids });
           }}
-          className="h-24"
-        >
-          {allPeople.map((p) => <option key={p.id} value={p.id}>{p.first_name} {p.last_name}</option>)}
-        </select>
+        />
       </div>
     </div>
   );
