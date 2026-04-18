@@ -35,9 +35,6 @@ RUN addgroup --system --gid 1001 nodejs && \
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-# Next.js standalone omits instrumentation.js; copy it (and its chunks) so Sentry initializes.
-COPY --from=builder --chown=nextjs:nodejs /app/.next/server/instrumentation.js ./.next/server/instrumentation.js
-COPY --from=builder --chown=nextjs:nodejs /app/.next/server/chunks ./.next/server/chunks
 COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 COPY --from=litestream /usr/local/bin/litestream /usr/local/bin/litestream
 COPY --chown=nextjs:nodejs litestream.yml /etc/litestream.yml
