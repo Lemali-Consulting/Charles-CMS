@@ -169,9 +169,10 @@ litestream restore \
 # litestream restore -replica-endpoint $AWS_ENDPOINT_URL_S3 -o ./local-crm.db s3://$BUCKET_NAME/crm.db
 ```
 
-List snapshots from inside the container:
+Verify replication from inside the container (Litestream 0.5.x CLI):
 ```bash
-fly ssh console -C "litestream snapshots -config /etc/litestream.yml /data/crm.db"
+fly ssh console -C "litestream status -config /etc/litestream.yml"
+fly ssh console -C "litestream ltx -config /etc/litestream.yml /data/crm.db"
 ```
 
 The existing `fly ssh console -C "node scripts/seed.js"` seed flow still works — Litestream replicates seeded rows automatically.
