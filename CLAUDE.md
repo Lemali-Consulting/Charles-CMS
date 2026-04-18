@@ -80,6 +80,59 @@ To start fresh, delete `crm.db` before seeding.
 - **Trends**: Tabbed view (All/Investor/Customer/Talent) with Total, Avg/Month, Months Tracked, line chart
 - **Export**: CSV download of all introductions
 
+## Monitoring
+
+### Sentry (error reporting)
+
+Config files: `sentry.server.config.ts`, `sentry.edge.config.ts`, `instrumentation.ts`, `instrumentation-client.ts`. `next.config.ts` is wrapped with `withSentryConfig`. Sentry only initializes when the DSN env var is present, so local dev without DSN is silent.
+
+Required env vars:
+- `SENTRY_DSN` — server DSN (Fly secret).
+- `NEXT_PUBLIC_SENTRY_DSN` — client DSN, baked into the browser bundle at build time.
+- `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN` — only needed to upload source maps during the build. If `SENTRY_AUTH_TOKEN` is absent, source-map upload is skipped and the build still succeeds.
+
+Set on Fly:
+```bash
+fly secrets set SENTRY_DSN=https://... NEXT_PUBLIC_SENTRY_DSN=https://...
+# Optional (for source maps in CI / fly deploy):
+fly secrets set SENTRY_ORG=... SENTRY_PROJECT=... SENTRY_AUTH_TOKEN=...
+```
+
+To verify alerts end-to-end, temporarily throw from an API route (e.g. `throw new Error("sentry smoke test")` in `src/app/api/stats/route.ts`), hit it, confirm the event shows up in Sentry, then revert.
+
+### Litestream (SQLite continuous replication)
+
+Config: `litestream.yml` at repo root (env-var driven, no secrets checked in). Installed as a static binary in the Dockerfile and invoked by `scripts/entrypoint.sh`, which:
+1. Runs `litestream restore` if `/data/crm.db` is missing (fresh machine recovers from the replica).
+2. Supervises Next.js via `litestream replicate -exec "node server.js"` — if Next.js exits, the container exits and Litestream flushes on shutdown.
+
+Required Fly secrets (Cloudflare R2 or any S3-compatible bucket):
+```bash
+fly secrets set \
+  LITESTREAM_BUCKET=charles-crm-backups \
+  LITESTREAM_PATH=crm.db \
+  LITESTREAM_ENDPOINT=https://<account>.r2.cloudflarestorage.com \
+  LITESTREAM_REGION=auto \
+  LITESTREAM_ACCESS_KEY_ID=... \
+  LITESTREAM_SECRET_ACCESS_KEY=...
+```
+
+If `LITESTREAM_BUCKET` is unset, the entrypoint runs Next.js without replication (useful for local Docker runs).
+
+Pull a local snapshot to query offline:
+```bash
+litestream restore \
+  -o ./local-crm.db \
+  -config ./litestream.yml \
+  /data/crm.db
+# or point directly at the replica:
+litestream restore -o ./local-crm.db s3://$LITESTREAM_BUCKET/$LITESTREAM_PATH
+```
+
+List snapshots: `litestream snapshots -config ./litestream.yml /data/crm.db`.
+
+The existing `fly ssh console -C "node scripts/seed.js"` seed flow still works — Litestream replicates seeded rows automatically.
+
 ## External References
 
 - `external/nexus` — Git submodule of the Nexus project, used as reference for CRM patterns and side navbar design
