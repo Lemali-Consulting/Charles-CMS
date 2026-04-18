@@ -4,6 +4,12 @@ import { withSentryConfig } from "@sentry/nextjs";
 const nextConfig: NextConfig = {
   output: "standalone",
   serverExternalPackages: ["better-sqlite3"],
+  outputFileTracingIncludes: {
+    "*": [
+      "./node_modules/require-in-the-middle/**/*",
+      "./node_modules/import-in-the-middle/**/*",
+    ],
+  },
 };
 
 const sentryEnabled = Boolean(process.env.SENTRY_AUTH_TOKEN);
