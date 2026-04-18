@@ -308,6 +308,15 @@ export function getPerson(id: number): Person | null {
   return hydratePersonCategories(row);
 }
 
+export function findPersonByEmail(email: string): Person | null {
+  const trimmed = email.trim().toLowerCase();
+  if (!trimmed) return null;
+  const db = getDb();
+  const row = db.prepare("SELECT * FROM people WHERE LOWER(email) = ?").get(trimmed) as Record<string, unknown> | undefined;
+  if (!row) return null;
+  return hydratePersonCategories(row);
+}
+
 export function createPerson(data: { first_name: string; last_name: string; email?: string; linkedin_url?: string; notes?: string }): Person {
   const db = getDb();
   const result = db.prepare(`
@@ -440,7 +449,7 @@ export function createOrgType(name: string): NamedEntity {
 
 // ── Interactions / Introductions ──────────────────────
 
-export function getInteractions(filters?: { person_id?: number; org_id?: number; type_id?: number }): Interaction[] {
+export function getInteractions(filters?: { person_id?: number; org_id?: number; type_id?: number; category?: string; month?: string }): Interaction[] {
   const db = getDb();
   let where = "1=1";
   const params: unknown[] = [];
@@ -455,6 +464,19 @@ export function getInteractions(filters?: { person_id?: number; org_id?: number;
   if (filters?.type_id) {
     where += " AND i.interaction_type_id = ?";
     params.push(filters.type_id);
+  }
+  if (filters?.category) {
+    where += ` AND i.id IN (
+      SELECT ip.interaction_id FROM interaction_people ip
+      JOIN person_category_links pcl ON pcl.person_id = ip.person_id
+      JOIN person_categories pc ON pc.id = pcl.category_id
+      WHERE pc.name = ?
+    )`;
+    params.push(filters.category);
+  }
+  if (filters?.month) {
+    where += " AND strftime('%Y-%m', i.date) = ?";
+    params.push(filters.month);
   }
   const rows = db.prepare(`
     SELECT i.*, it.name as interaction_type_name, im.name as medium_name

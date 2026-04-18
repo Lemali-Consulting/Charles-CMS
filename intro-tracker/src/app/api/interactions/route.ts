@@ -5,10 +5,14 @@ export async function GET(request: NextRequest) {
   const person_id = request.nextUrl.searchParams.get("person_id");
   const org_id = request.nextUrl.searchParams.get("org_id");
   const type_id = request.nextUrl.searchParams.get("type_id");
+  const category = request.nextUrl.searchParams.get("category");
+  const month = request.nextUrl.searchParams.get("month");
   return NextResponse.json(getInteractions({
     person_id: person_id ? Number(person_id) : undefined,
     org_id: org_id ? Number(org_id) : undefined,
     type_id: type_id ? Number(type_id) : undefined,
+    category: category || undefined,
+    month: month || undefined,
   }));
 }
 
