@@ -42,3 +42,9 @@ next-env.d.ts
 
 # sqlite database
 *.db
+
+# local people import data (contains PII)
+people.json
+
+# next standalone build helper (generated)
+dbsetup.js

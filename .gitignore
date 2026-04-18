@@ -1,0 +1,8 @@
+# Playwright MCP run artifacts
+.playwright-mcp/
+
+# Local DB backups
+prod-backups/
+
+# Local prompt notes
+prompts/
