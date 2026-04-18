@@ -106,30 +106,35 @@ Config: `litestream.yml` at repo root (env-var driven, no secrets checked in). I
 1. Runs `litestream restore` if `/data/crm.db` is missing (fresh machine recovers from the replica).
 2. Supervises Next.js via `litestream replicate -exec "node server.js"` — if Next.js exits, the container exits and Litestream flushes on shutdown.
 
-Required Fly secrets (Cloudflare R2 or any S3-compatible bucket):
+Storage backend is **Tigris** (S3-compatible, provisioned as a Fly add-on). Provision and wire up in one command:
+
 ```bash
-fly secrets set \
-  LITESTREAM_BUCKET=charles-crm-backups \
-  LITESTREAM_PATH=crm.db \
-  LITESTREAM_ENDPOINT=https://<account>.r2.cloudflarestorage.com \
-  LITESTREAM_REGION=auto \
-  LITESTREAM_ACCESS_KEY_ID=... \
-  LITESTREAM_SECRET_ACCESS_KEY=...
+fly storage create --app charles-crm
 ```
 
-If `LITESTREAM_BUCKET` is unset, the entrypoint runs Next.js without replication (useful for local Docker runs).
+This creates a bucket and injects these Fly secrets automatically:
+- `BUCKET_NAME`
+- `AWS_ENDPOINT_URL_S3`
+- `AWS_REGION`
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
 
-Pull a local snapshot to query offline:
+Litestream picks up `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` natively; the other three are referenced in `litestream.yml`. If `BUCKET_NAME` is unset (e.g. local Docker runs), the entrypoint runs Next.js without replication.
+
+Pull a local snapshot to query offline (use the same creds locally):
 ```bash
+export AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=...
 litestream restore \
   -o ./local-crm.db \
-  -config ./litestream.yml \
-  /data/crm.db
-# or point directly at the replica:
-litestream restore -o ./local-crm.db s3://$LITESTREAM_BUCKET/$LITESTREAM_PATH
+  s3://$BUCKET_NAME/crm.db
+# endpoint is read from AWS_ENDPOINT_URL_S3 via --replica-endpoint if needed:
+# litestream restore -replica-endpoint $AWS_ENDPOINT_URL_S3 -o ./local-crm.db s3://$BUCKET_NAME/crm.db
 ```
 
-List snapshots: `litestream snapshots -config ./litestream.yml /data/crm.db`.
+List snapshots from inside the container:
+```bash
+fly ssh console -C "litestream snapshots -config /etc/litestream.yml /data/crm.db"
+```
 
 The existing `fly ssh console -C "node scripts/seed.js"` seed flow still works — Litestream replicates seeded rows automatically.
 
