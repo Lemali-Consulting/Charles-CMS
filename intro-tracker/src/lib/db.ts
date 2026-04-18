@@ -153,9 +153,25 @@ function initSchema(db: Database.Database) {
       CHECK(org_1_id < org_2_id)
     );
 
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      name TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      last_login_at TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS verification_tokens (
+      identifier TEXT NOT NULL,
+      token TEXT NOT NULL,
+      expires INTEGER NOT NULL,
+      PRIMARY KEY (identifier, token)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_interactions_date ON interactions(date DESC);
     CREATE INDEX IF NOT EXISTS idx_people_name ON people(last_name, first_name);
     CREATE INDEX IF NOT EXISTS idx_organizations_name ON organizations(name);
+    CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
   `);
 
   // Seed default interaction types if empty
@@ -927,4 +943,69 @@ export function getRelationshipsForPerson(personId: number): {
 
 export function getInteractionsForPerson(personId: number): Interaction[] {
   return getInteractions({ person_id: personId });
+}
+
+// ── Users (Auth.js) ────────────────────────────────────
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string | null;
+  created_at: string;
+  last_login_at: string | null;
+}
+
+export function getUserById(id: string): AuthUser | null {
+  const row = getDb().prepare("SELECT * FROM users WHERE id = ?").get(id) as AuthUser | undefined;
+  return row || null;
+}
+
+export function getUserByEmail(email: string): AuthUser | null {
+  const row = getDb()
+    .prepare("SELECT * FROM users WHERE lower(email) = lower(?)")
+    .get(email) as AuthUser | undefined;
+  return row || null;
+}
+
+export function createUser(data: { id: string; email: string; name?: string | null }): AuthUser {
+  const db = getDb();
+  db.prepare(
+    "INSERT INTO users (id, email, name) VALUES (?, ?, ?)"
+  ).run(data.id, data.email.toLowerCase(), data.name ?? null);
+  return getUserById(data.id)!;
+}
+
+export function touchUserLogin(id: string): void {
+  getDb().prepare("UPDATE users SET last_login_at = datetime('now') WHERE id = ?").run(id);
+}
+
+// ── Verification tokens (Auth.js email provider) ───────
+
+export interface VerificationToken {
+  identifier: string;
+  token: string;
+  expires: number;
+}
+
+export function createVerificationToken(token: VerificationToken): VerificationToken {
+  getDb()
+    .prepare("INSERT INTO verification_tokens (identifier, token, expires) VALUES (?, ?, ?)")
+    .run(token.identifier, token.token, token.expires);
+  return token;
+}
+
+export function useVerificationToken(
+  identifier: string,
+  token: string
+): VerificationToken | null {
+  const db = getDb();
+  const row = db
+    .prepare("SELECT * FROM verification_tokens WHERE identifier = ? AND token = ?")
+    .get(identifier, token) as VerificationToken | undefined;
+  if (!row) return null;
+  db.prepare("DELETE FROM verification_tokens WHERE identifier = ? AND token = ?").run(
+    identifier,
+    token
+  );
+  return row;
 }

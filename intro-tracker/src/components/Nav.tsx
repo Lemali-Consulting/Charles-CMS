@@ -20,7 +20,17 @@ export default function Nav() {
   if (pathname === "/login") return null;
 
   async function handleLogout() {
-    await fetch("/api/auth/logout", { method: "POST" });
+    const csrfRes = await fetch("/api/auth/csrf");
+    const { csrfToken } = await csrfRes.json();
+    const body = new URLSearchParams();
+    body.set("csrfToken", csrfToken);
+    body.set("callbackUrl", "/login");
+    await fetch("/api/auth/signout", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+      redirect: "manual",
+    });
     router.push("/login");
     router.refresh();
   }

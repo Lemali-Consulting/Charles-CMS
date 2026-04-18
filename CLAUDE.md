@@ -8,7 +8,7 @@ A CRM web app focused on tracking introductions between investors, customers, an
 
 - **Frontend**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, Recharts
 - **Backend**: Next.js API routes, SQLite (better-sqlite3)
-- **Auth**: bcryptjs + JWT session tokens
+- **Auth**: Auth.js v5 (NextAuth) magic-link email via Resend; JWT sessions
 - **Package manager**: npm
 
 ## Project Structure
@@ -23,18 +23,22 @@ src/
 │   ├── interactions/page.tsx     # Introductions list + detail (two-panel)
 │   ├── trends/page.tsx           # Trends analysis with category tabs
 │   ├── export/page.tsx           # CSV export
-│   ├── login/page.tsx            # Password auth
+│   ├── login/page.tsx            # Magic-link email login
 │   └── api/
 │       ├── people/               # CRUD + [id] + categories
 │       ├── organizations/        # CRUD + [id] + types
 │       ├── interactions/         # Introduction creation + mediums
 │       ├── relationships/        # person-person, org-person, org-org + types
 │       ├── stats/                # Monthly aggregation + category breakdowns
-│       └── auth/                 # login, logout
+│       └── auth/[...nextauth]/   # Auth.js handler (signin, signout, callback, csrf)
 ├── components/                   # Nav (side rail), MonthlySummary, TrendChart
+├── proxy.ts                      # Auth.js edge middleware (route protection)
 └── lib/
-    ├── db.ts                     # Database layer (schema, all queries)
-    └── auth.ts                   # Password verification, JWT sessions
+    ├── db.ts                     # Database layer (schema, all queries, users table)
+    ├── auth.ts                   # Auth.js config + SQLite adapter + Resend provider
+    ├── auth.config.ts            # Edge-safe Auth.js config (used by proxy.ts)
+    ├── allowlist.ts              # isEmailAllowed + parseAllowlist
+    └── rate-limit.ts             # In-memory login rate limiter
 ```
 
 ## Running
@@ -79,6 +83,40 @@ To start fresh, delete `crm.db` before seeding.
 - **Dashboard**: Stat cards (People, Orgs, This Month, Investor/Customer/Talent intros), monthly bar chart
 - **Trends**: Tabbed view (All/Investor/Customer/Talent) with Total, Avg/Month, Months Tracked, line chart
 - **Export**: CSV download of all introductions
+
+## Authentication
+
+Magic-link email auth via Auth.js v5 + Resend. No passwords. Only emails on the allowlist can sign in; non-allowlisted submissions show the same "check your email" UI but no email is sent (prevents user enumeration). Rate-limited to 5 signin requests per 10 minutes per IP (in-memory).
+
+### Env vars
+
+- `AUTH_SECRET` — JWT signing secret (`openssl rand -base64 32`).
+- `AUTH_URL` — public origin of the deployed app (magic-link target host).
+- `AUTH_RESEND_KEY` — Resend API key.
+- `AUTH_EMAIL_FROM` — From address, e.g. `Charles CMS <noreply@yourdomain>`.
+- `AUTH_ALLOWED_EMAILS` — comma-separated allowlist. **Empty/missing = deny all.**
+
+### Resend setup
+
+1. Create an account at https://resend.com.
+2. Verify a sender domain under Domains → Add Domain (DNS records: SPF/DKIM).
+3. Create an API key under API Keys.
+4. Use `noreply@<verified-domain>` as `AUTH_EMAIL_FROM`.
+
+### Fly secrets
+
+```bash
+fly secrets set \
+  AUTH_SECRET="$(openssl rand -base64 32)" \
+  AUTH_URL=https://charles-cms.fly.dev \
+  AUTH_RESEND_KEY=re_xxx \
+  AUTH_EMAIL_FROM="Charles CMS <noreply@yourdomain>" \
+  AUTH_ALLOWED_EMAILS="charles@example.com,max@example.com"
+```
+
+To add/remove an allowed user: re-run `fly secrets set AUTH_ALLOWED_EMAILS=...` with the new CSV and redeploy (or `fly apps restart`).
+
+`AUTH_URL` must match the origin users load — mismatch breaks the magic-link redirect.
 
 ## Monitoring
 
