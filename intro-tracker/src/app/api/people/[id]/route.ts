@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPerson, updatePerson, setPersonCategories } from "@/lib/db";
+import { parseJson } from "@/lib/parse-json";
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -10,12 +11,9 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  let data: Record<string, unknown>;
-  try {
-    data = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid or empty JSON body" }, { status: 400 });
-  }
+  const parsed = await parseJson(request);
+  if (!parsed.ok) return parsed.response;
+  const data = parsed.data;
   if (data.categories !== undefined) {
     setPersonCategories(Number(id), data.categories);
     delete data.categories;

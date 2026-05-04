@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPeople, createPerson, deletePerson } from "@/lib/db";
+import { parseJson } from "@/lib/parse-json";
 
 export async function GET(request: NextRequest) {
   const search = request.nextUrl.searchParams.get("search") || undefined;
@@ -7,7 +8,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const data = await request.json();
+  const parsed = await parseJson<{ first_name?: string; last_name?: string }>(request);
+  if (!parsed.ok) return parsed.response;
+  const data = parsed.data;
   if (!data.first_name || !data.last_name) {
     return NextResponse.json({ error: "first_name and last_name are required" }, { status: 400 });
   }

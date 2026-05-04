@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOrganization, updateOrganization } from "@/lib/db";
+import { parseJson } from "@/lib/parse-json";
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -10,8 +11,9 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const data = await request.json();
-  const org = updateOrganization(Number(id), data);
+  const parsed = await parseJson(request);
+  if (!parsed.ok) return parsed.response;
+  const org = updateOrganization(Number(id), parsed.data);
   if (!org) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(org);
 }
