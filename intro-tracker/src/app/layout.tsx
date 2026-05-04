@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Toaster } from "sonner";
+import Toaster from "@/components/Toaster";
 import Nav from "@/components/Nav";
 import "./globals.css";
 
@@ -34,7 +34,7 @@ export default function RootLayout({
         <main className="flex-1 ml-[3.75rem] min-h-screen">
           {children}
         </main>
-        <Toaster position="top-right" richColors closeButton />
+        <Toaster />
       </body>
     </html>
   );
