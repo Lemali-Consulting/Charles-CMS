@@ -58,7 +58,7 @@ export default function PeoplePage() {
 
   async function handleDelete(id: number) {
     if (!confirm("Delete this person?")) return;
-    const res = await fetch(`/api/people?id=${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/people?id=${id}`, { method: "DELETE", keepalive: true });
     if (await toastIfError(res, "Failed to delete person")) return;
     setSelectedId(null);
     load();
@@ -169,6 +169,9 @@ function PersonDetail({ person, onUpdate, onDelete }: {
     people: Array<{ id: number; person_1_id: number; person_1_name: string; person_2_id: number; person_2_name: string; relationship_type_name: string | null }>;
     organizations: Array<{ id: number; organization_name: string; relationship_type_name: string | null }>;
   }>({ people: [], organizations: [] });
+  const [localCategoryNames, setLocalCategoryNames] = useState<string[]>(
+    person.categories.map((c) => c.name)
+  );
 
   useEffect(() => {
     setForm({
@@ -178,6 +181,7 @@ function PersonDetail({ person, onUpdate, onDelete }: {
       linkedin_url: person.linkedin_url,
       notes: person.notes,
     });
+    setLocalCategoryNames(person.categories.map((c) => c.name));
     fetch(`/api/interactions?person_id=${person.id}`).then(r => r.json()).then(setInteractions);
     Promise.all([
       fetch("/api/relationships/person-person").then(r => r.json()),
@@ -195,22 +199,28 @@ function PersonDetail({ person, onUpdate, onDelete }: {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ [field]: value }),
+      keepalive: true,
     });
     if (await toastIfError(res, "Failed to save")) return;
     onUpdate();
   }
 
   async function toggleCategory(categoryName: string) {
-    const current = person.categories.map(c => c.name);
-    const newCategories = current.includes(categoryName)
-      ? current.filter(c => c !== categoryName)
-      : [...current, categoryName];
+    const previous = localCategoryNames;
+    const next = previous.includes(categoryName)
+      ? previous.filter((c) => c !== categoryName)
+      : [...previous, categoryName];
+    setLocalCategoryNames(next);
     const res = await fetch(`/api/people/${person.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ categories: newCategories }),
+      body: JSON.stringify({ categories: next }),
+      keepalive: true,
     });
-    if (await toastIfError(res, "Failed to update categories")) return;
+    if (await toastIfError(res, "Failed to update categories")) {
+      setLocalCategoryNames(previous);
+      return;
+    }
     onUpdate();
   }
 
@@ -272,7 +282,7 @@ function PersonDetail({ person, onUpdate, onDelete }: {
         <label>Categories</label>
         <div className="flex gap-2">
           {CATEGORIES.map((cat) => {
-            const active = person.categories.some(c => c.name === cat);
+            const active = localCategoryNames.includes(cat);
             return (
               <button
                 key={cat}

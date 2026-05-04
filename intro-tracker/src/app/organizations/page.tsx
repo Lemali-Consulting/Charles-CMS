@@ -68,7 +68,7 @@ export default function OrganizationsPage() {
 
   async function handleDelete(id: number) {
     if (!confirm("Delete this organization?")) return;
-    const res = await fetch(`/api/organizations?id=${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/organizations?id=${id}`, { method: "DELETE", keepalive: true });
     if (await toastIfError(res, "Failed to delete organization")) return;
     setSelectedId(null);
     load();
@@ -182,7 +182,7 @@ function OrgDetail({ org, orgTypes, allPeople, onUpdate, onDelete }: {
   }
 
   async function detachPerson(relId: number) {
-    const res = await fetch(`/api/relationships/org-person?id=${relId}`, { method: "DELETE" });
+    const res = await fetch(`/api/relationships/org-person?id=${relId}`, { method: "DELETE", keepalive: true });
     if (await toastIfError(res, "Failed to detach person")) return;
     reloadRelationships();
   }
@@ -192,6 +192,7 @@ function OrgDetail({ org, orgTypes, allPeople, onUpdate, onDelete }: {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ [field]: value }),
+      keepalive: true,
     });
     if (await toastIfError(res, "Failed to save")) return;
     onUpdate();

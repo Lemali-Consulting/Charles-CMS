@@ -65,17 +65,17 @@ export default function RelationshipsPage() {
   useEffect(() => { load(); }, []);
 
   async function handleDeletePP(id: number) {
-    const res = await fetch(`/api/relationships/person-person?id=${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/relationships/person-person?id=${id}`, { method: "DELETE", keepalive: true });
     if (await toastIfError(res, "Failed to delete relationship")) return;
     load();
   }
   async function handleDeleteOP(id: number) {
-    const res = await fetch(`/api/relationships/org-person?id=${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/relationships/org-person?id=${id}`, { method: "DELETE", keepalive: true });
     if (await toastIfError(res, "Failed to delete relationship")) return;
     load();
   }
   async function handleDeleteOO(id: number) {
-    const res = await fetch(`/api/relationships/org-org?id=${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/relationships/org-org?id=${id}`, { method: "DELETE", keepalive: true });
     if (await toastIfError(res, "Failed to delete relationship")) return;
     load();
   }
