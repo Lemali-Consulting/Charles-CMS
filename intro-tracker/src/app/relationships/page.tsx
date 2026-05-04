@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import { toastIfError } from "@/lib/api-toast";
 
 interface NamedEntity { id: number; name: string }
 interface Person { id: number; first_name: string; last_name: string }
@@ -63,15 +65,18 @@ export default function RelationshipsPage() {
   useEffect(() => { load(); }, []);
 
   async function handleDeletePP(id: number) {
-    await fetch(`/api/relationships/person-person?id=${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/relationships/person-person?id=${id}`, { method: "DELETE" });
+    if (await toastIfError(res, "Failed to delete relationship")) return;
     load();
   }
   async function handleDeleteOP(id: number) {
-    await fetch(`/api/relationships/org-person?id=${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/relationships/org-person?id=${id}`, { method: "DELETE" });
+    if (await toastIfError(res, "Failed to delete relationship")) return;
     load();
   }
   async function handleDeleteOO(id: number) {
-    await fetch(`/api/relationships/org-org?id=${id}`, { method: "DELETE" });
+    const res = await fetch(`/api/relationships/org-org?id=${id}`, { method: "DELETE" });
+    if (await toastIfError(res, "Failed to delete relationship")) return;
     load();
   }
 
@@ -182,7 +187,10 @@ function NewRelationshipForm({ tab, people, orgs, ppTypes, opTypes, ooTypes, onC
   const typesList = tab === "person-person" ? ppTypes : tab === "org-person" ? opTypes : ooTypes;
 
   async function handleSubmit() {
-    if (!entity1 || !entity2) return;
+    if (!entity1 || !entity2) {
+      toast.error("Please select both entities");
+      return;
+    }
     const endpoint = `/api/relationships/${tab}`;
     let body: Record<string, unknown>;
     if (tab === "person-person") {
@@ -197,7 +205,9 @@ function NewRelationshipForm({ tab, people, orgs, ppTypes, opTypes, ooTypes, onC
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    if (res.ok) onCreated();
+    if (await toastIfError(res, "Failed to create relationship")) return;
+    toast.success("Relationship created");
+    onCreated();
   }
 
   async function handleCreateType() {
@@ -208,12 +218,12 @@ function NewRelationshipForm({ tab, people, orgs, ppTypes, opTypes, ooTypes, onC
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: newTypeName.trim() }),
     });
-    if (res.ok) {
-      const newType = await res.json();
-      setTypeId(newType.id);
-      setNewTypeName("");
-      onCreated(); // reload to get new type in list
-    }
+    if (await toastIfError(res, "Failed to create type")) return;
+    const newType = await res.json();
+    setTypeId(newType.id);
+    setNewTypeName("");
+    toast.success("Type created");
+    onCreated();
   }
 
   return (
