@@ -63,7 +63,7 @@ export default function OrganizationsPage() {
 
   async function handleDelete(id: number) {
     if (!confirm("Delete this organization?")) return;
-    await fetch(`/api/organizations?id=${id}`, { method: "DELETE" });
+    await fetch(`/api/organizations?id=${id}`, { method: "DELETE", keepalive: true });
     setSelectedId(null);
     load();
   }
@@ -174,7 +174,7 @@ function OrgDetail({ org, orgTypes, allPeople, onUpdate, onDelete }: {
   }
 
   async function detachPerson(relId: number) {
-    await fetch(`/api/relationships/org-person?id=${relId}`, { method: "DELETE" });
+    await fetch(`/api/relationships/org-person?id=${relId}`, { method: "DELETE", keepalive: true });
     reloadRelationships();
   }
 
@@ -183,6 +183,7 @@ function OrgDetail({ org, orgTypes, allPeople, onUpdate, onDelete }: {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ [field]: value }),
+      keepalive: true,
     });
     onUpdate();
   }

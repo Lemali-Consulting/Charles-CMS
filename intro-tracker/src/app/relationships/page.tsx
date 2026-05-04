@@ -63,15 +63,15 @@ export default function RelationshipsPage() {
   useEffect(() => { load(); }, []);
 
   async function handleDeletePP(id: number) {
-    await fetch(`/api/relationships/person-person?id=${id}`, { method: "DELETE" });
+    await fetch(`/api/relationships/person-person?id=${id}`, { method: "DELETE", keepalive: true });
     load();
   }
   async function handleDeleteOP(id: number) {
-    await fetch(`/api/relationships/org-person?id=${id}`, { method: "DELETE" });
+    await fetch(`/api/relationships/org-person?id=${id}`, { method: "DELETE", keepalive: true });
     load();
   }
   async function handleDeleteOO(id: number) {
-    await fetch(`/api/relationships/org-org?id=${id}`, { method: "DELETE" });
+    await fetch(`/api/relationships/org-org?id=${id}`, { method: "DELETE", keepalive: true });
     load();
   }
 

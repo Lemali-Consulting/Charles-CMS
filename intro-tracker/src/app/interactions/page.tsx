@@ -74,7 +74,7 @@ export default function IntroductionsPage() {
 
   async function handleDelete(id: number) {
     if (!confirm("Delete this introduction?")) return;
-    await fetch(`/api/interactions?id=${id}`, { method: "DELETE" });
+    await fetch(`/api/interactions?id=${id}`, { method: "DELETE", keepalive: true });
     setSelectedId(null);
     load();
   }
@@ -292,6 +292,7 @@ function IntroductionDetail({ introduction, mediums, allPeople, onUpdate, onDele
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
+      keepalive: true,
     });
     onUpdate();
   }

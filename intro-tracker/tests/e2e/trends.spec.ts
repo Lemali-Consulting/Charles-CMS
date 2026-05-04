@@ -7,20 +7,14 @@ async function createPersonWithCategory(page: Page, first: string, last: string,
   await page.getByPlaceholder("Last name").fill(last);
   await page.getByRole("button", { name: "Create", exact: true }).click();
   await expect(page.getByRole("heading", { name: `${first} ${last}` })).toBeVisible();
-  // Wait for the PUT to complete so the category is actually persisted
-  // before we navigate away. Without this, the click aborts mid-flight.
-  await Promise.all([
-    page.waitForResponse(
-      (r) => /\/api\/people\/\d+$/.test(r.url()) && r.request().method() === "PUT" && r.ok()
-    ),
-    page.getByRole("button", { name: category, exact: true }).click(),
-  ]);
+  // The toggle uses fetch keepalive + optimistic UI, so navigating immediately
+  // is safe — no waitForResponse needed.
+  await page.getByRole("button", { name: category, exact: true }).click();
 }
 
 test("category-tagged introduction reflects in the matching trends tab", async ({ page }) => {
   const stamp = Date.now();
   await createPersonWithCategory(page, "Inv", `Trend${stamp}`, "Investor");
-  // Plain second participant — created without a category
   await page.goto("/people");
   await page.getByRole("button", { name: "+ Add" }).click();
   await page.getByPlaceholder("First name").fill("Plain");
@@ -34,12 +28,9 @@ test("category-tagged introduction reflects in the matching trends tab", async (
   await page.getByRole("option", { name: new RegExp(`Inv Trend${stamp}`) }).first().click();
   await page.getByPlaceholder("Type a name to add...").fill(`Plain Trend${stamp}`);
   await page.getByRole("option", { name: new RegExp(`Plain Trend${stamp}`) }).first().click();
-  await Promise.all([
-    page.waitForResponse(
-      (r) => r.url().endsWith("/api/interactions") && r.request().method() === "POST" && r.ok()
-    ),
-    page.getByRole("button", { name: "Create", exact: true }).click(),
-  ]);
+  await page.getByRole("button", { name: "Create", exact: true }).click();
+  // Wait for the introduction list to update before navigating to /trends
+  await expect(page.getByText(new RegExp(`Inv Trend${stamp}`)).first()).toBeVisible();
 
   await page.goto("/trends");
   await page.getByRole("button", { name: "Investor", exact: true }).click();
