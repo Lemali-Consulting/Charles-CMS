@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { toastIfError } from "@/lib/api-toast";
+import EntityPicker, { type PickerItem } from "@/components/EntityPicker";
 
 interface NamedEntity { id: number; name: string }
 interface Person { id: number; first_name: string; last_name: string }
@@ -186,6 +187,13 @@ function NewRelationshipForm({ tab, people, orgs, ppTypes, opTypes, ooTypes, onC
 
   const typesList = tab === "person-person" ? ppTypes : tab === "org-person" ? opTypes : ooTypes;
 
+  const peopleItems: PickerItem[] = people.map((p) => ({ id: p.id, label: `${p.first_name} ${p.last_name}` }));
+  const orgItems: PickerItem[] = orgs.map((o) => ({ id: o.id, label: o.name }));
+  const entity1Items = tab === "person-person" ? peopleItems : orgItems;
+  const entity2Items = tab === "org-org" ? orgItems : tab === "person-person" ? peopleItems : peopleItems;
+  const entity1Placeholder = tab === "person-person" ? "Search a person..." : "Search an organization...";
+  const entity2Placeholder = tab === "org-org" ? "Search an organization..." : "Search a person...";
+
   async function handleSubmit() {
     if (!entity1 || !entity2) {
       toast.error("Please select both entities");
@@ -231,21 +239,23 @@ function NewRelationshipForm({ tab, people, orgs, ppTypes, opTypes, ooTypes, onC
       <div className="grid grid-cols-2 gap-3">
         <div className="crm-field">
           <label>{tab === "org-person" ? "Organization" : tab === "org-org" ? "Org 1" : "Person 1"}</label>
-          <select value={entity1} onChange={(e) => setEntity1(Number(e.target.value))}>
-            <option value={0}>-- Select --</option>
-            {(tab === "person-person" ? people : orgs).map((e) => (
-              <option key={e.id} value={e.id}>{"first_name" in e ? `${e.first_name} ${e.last_name}` : e.name}</option>
-            ))}
-          </select>
+          <EntityPicker
+            items={entity1Items}
+            value={entity1}
+            onChange={setEntity1}
+            excludeIds={tab !== "org-person" && entity2 ? [entity2] : []}
+            placeholder={entity1Placeholder}
+          />
         </div>
         <div className="crm-field">
           <label>{tab === "org-person" ? "Person" : tab === "org-org" ? "Org 2" : "Person 2"}</label>
-          <select value={entity2} onChange={(e) => setEntity2(Number(e.target.value))}>
-            <option value={0}>-- Select --</option>
-            {(tab === "org-org" ? orgs : people).map((e) => (
-              <option key={e.id} value={e.id}>{"first_name" in e ? `${e.first_name} ${e.last_name}` : e.name}</option>
-            ))}
-          </select>
+          <EntityPicker
+            items={entity2Items}
+            value={entity2}
+            onChange={setEntity2}
+            excludeIds={tab !== "org-person" && entity1 ? [entity1] : []}
+            placeholder={entity2Placeholder}
+          />
         </div>
       </div>
       <div className="crm-field">
