@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getInteractions, createIntroduction, deleteInteraction } from "@/lib/db";
+import { parseJson } from "@/lib/parse-json";
 
 export async function GET(request: NextRequest) {
   const person_id = request.nextUrl.searchParams.get("person_id");
@@ -17,7 +18,14 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const data = await request.json();
+  const parsed = await parseJson<{
+    person_ids?: number[];
+    date?: string;
+    medium_id?: number;
+    notes?: string;
+  }>(request);
+  if (!parsed.ok) return parsed.response;
+  const data = parsed.data;
   if (!data.person_ids || data.person_ids.length < 2) {
     return NextResponse.json({ error: "At least 2 people are required for an introduction" }, { status: 400 });
   }
