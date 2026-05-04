@@ -96,6 +96,10 @@ Magic-link email auth via Auth.js v5 + Resend. No passwords. Only emails on the 
 - `AUTH_EMAIL_FROM` — From address, e.g. `Charles CMS <noreply@yourdomain>`.
 - `AUTH_ALLOWED_EMAILS` — comma-separated allowlist. **Empty/missing = deny all.**
 
+### Local dev login
+
+In dev (`NODE_ENV !== "production"`) the magic link is printed to the dev server's terminal instead of emailed. So `AUTH_RESEND_KEY` and `AUTH_EMAIL_FROM` can be blank locally — only `AUTH_SECRET` and `AUTH_ALLOWED_EMAILS` (with your email) are needed. Submit the login form, copy the URL from the terminal, paste it into the browser.
+
 ### Resend setup
 
 1. Create an account at https://resend.com.

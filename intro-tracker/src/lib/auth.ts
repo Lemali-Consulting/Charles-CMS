@@ -114,6 +114,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           // Same "check your email" UI regardless — silently skip the send.
           return;
         }
+        if (process.env.NODE_ENV !== "production") {
+          console.log(
+            `\n✉️  [dev] Magic link for ${identifier}:\n   ${url}\n`,
+          );
+          return;
+        }
         const apiKey = process.env.AUTH_RESEND_KEY;
         const from = process.env.AUTH_EMAIL_FROM;
         if (!apiKey || !from) {
