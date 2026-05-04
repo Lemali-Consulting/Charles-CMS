@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import PersonTypeahead from "@/components/PersonTypeahead";
+
+interface Person { id: number; first_name: string; last_name: string }
 
 interface Organization {
   id: number;
@@ -20,6 +23,7 @@ interface OrgType {
 export default function OrganizationsPage() {
   const [orgs, setOrgs] = useState<Organization[]>([]);
   const [orgTypes, setOrgTypes] = useState<OrgType[]>([]);
+  const [allPeople, setAllPeople] = useState<Person[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [showNewForm, setShowNewForm] = useState(false);
@@ -27,12 +31,14 @@ export default function OrganizationsPage() {
 
   const load = useCallback(async () => {
     const params = search ? `?search=${encodeURIComponent(search)}` : "";
-    const [orgsRes, typesRes] = await Promise.all([
+    const [orgsRes, typesRes, peopleRes] = await Promise.all([
       fetch(`/api/organizations${params}`),
       fetch("/api/organizations/types"),
+      fetch("/api/people"),
     ]);
     setOrgs(await orgsRes.json());
     setOrgTypes(await typesRes.json());
+    setAllPeople(await peopleRes.json());
   }, [search]);
 
   useEffect(() => { load(); }, [load]);
@@ -115,7 +121,7 @@ export default function OrganizationsPage() {
       </div>
 
       {selected ? (
-        <OrgDetail org={selected} orgTypes={orgTypes} onUpdate={load} onDelete={() => handleDelete(selected.id)} />
+        <OrgDetail org={selected} orgTypes={orgTypes} allPeople={allPeople} onUpdate={load} onDelete={() => handleDelete(selected.id)} />
       ) : (
         <div className="crm-empty-detail">Select an organization to view details</div>
       )}
@@ -123,9 +129,10 @@ export default function OrganizationsPage() {
   );
 }
 
-function OrgDetail({ org, orgTypes, onUpdate, onDelete }: {
+function OrgDetail({ org, orgTypes, allPeople, onUpdate, onDelete }: {
   org: Organization;
   orgTypes: OrgType[];
+  allPeople: Person[];
   onUpdate: () => void;
   onDelete: () => void;
 }) {
@@ -136,13 +143,12 @@ function OrgDetail({ org, orgTypes, onUpdate, onDelete }: {
   });
   const [newTypeName, setNewTypeName] = useState("");
   const [relationships, setRelationships] = useState<{
-    people: Array<{ id: number; person_name: string; relationship_type_name: string | null }>;
+    people: Array<{ id: number; person_id: number; person_name: string; relationship_type_name: string | null }>;
     orgs: Array<{ id: number; org_1_id: number; org_1_name: string; org_2_id: number; org_2_name: string; relationship_type_name: string | null }>;
   }>({ people: [], orgs: [] });
 
-  useEffect(() => {
-    setForm({ name: org.name, org_type_id: org.org_type_id, notes: org.notes });
-    Promise.all([
+  const reloadRelationships = useCallback(() => {
+    return Promise.all([
       fetch("/api/relationships/org-person").then(r => r.json()),
       fetch("/api/relationships/org-org").then(r => r.json()),
     ]).then(([op, oo]) => {
@@ -151,7 +157,26 @@ function OrgDetail({ org, orgTypes, onUpdate, onDelete }: {
         orgs: oo.filter((r: { org_1_id: number; org_2_id: number }) => r.org_1_id === org.id || r.org_2_id === org.id),
       });
     });
-  }, [org]);
+  }, [org.id]);
+
+  useEffect(() => {
+    setForm({ name: org.name, org_type_id: org.org_type_id, notes: org.notes });
+    reloadRelationships();
+  }, [org, reloadRelationships]);
+
+  async function attachPerson(personId: number) {
+    await fetch("/api/relationships/org-person", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ organization_id: org.id, person_id: personId }),
+    });
+    reloadRelationships();
+  }
+
+  async function detachPerson(relId: number) {
+    await fetch(`/api/relationships/org-person?id=${relId}`, { method: "DELETE" });
+    reloadRelationships();
+  }
 
   async function save(field: string, value: unknown) {
     await fetch(`/api/organizations/${org.id}`, {
@@ -232,15 +257,28 @@ function OrgDetail({ org, orgTypes, onUpdate, onDelete }: {
       {relationships.people.length === 0 ? (
         <p className="text-sm text-gray-400">No people linked</p>
       ) : (
-        <div className="space-y-1">
+        <div className="space-y-1 mb-2">
           {relationships.people.map((r) => (
-            <div key={r.id} className="text-sm flex gap-2">
+            <div key={r.id} className="text-sm flex items-center gap-2">
               <span className="font-medium">{r.person_name}</span>
               {r.relationship_type_name && <span className="text-gray-500">({r.relationship_type_name})</span>}
+              <button
+                type="button"
+                onClick={() => detachPerson(r.id)}
+                className="text-gray-400 hover:text-red-600 ml-auto"
+                aria-label="Remove"
+              >&times;</button>
             </div>
           ))}
         </div>
       )}
+      <PersonTypeahead
+        people={allPeople}
+        excludeIds={relationships.people.map(r => r.person_id)}
+        placeholder="Attach a person..."
+        onSelect={(p) => attachPerson(p.id)}
+      />
+
 
       <div className="crm-section-title">Related Organizations</div>
       {relationships.orgs.length === 0 ? (

@@ -237,7 +237,7 @@ export interface Interaction {
   medium_name: string | null;
   date: string;
   notes: string;
-  people: { id: number; first_name: string; last_name: string }[];
+  people: { id: number; first_name: string; last_name: string; categories: string[] }[];
   organizations: { id: number; name: string }[];
   created_at: string;
   updated_at: string;
@@ -290,11 +290,20 @@ export function getPeople(search?: string): Person[] {
   const db = getDb();
   let rows: Record<string, unknown>[];
   if (search) {
-    rows = db.prepare(`
-      SELECT * FROM people
-      WHERE first_name LIKE ? OR last_name LIKE ?
-      ORDER BY last_name, first_name
-    `).all(`%${search}%`, `%${search}%`) as Record<string, unknown>[];
+    const tokens = search.trim().split(/\s+/).filter(Boolean);
+    if (tokens.length === 0) {
+      rows = db.prepare("SELECT * FROM people ORDER BY last_name, first_name").all() as Record<string, unknown>[];
+    } else {
+      const clauses = tokens
+        .map(() => "(first_name LIKE ? OR last_name LIKE ? OR (first_name || ' ' || last_name) LIKE ?)")
+        .join(" AND ");
+      const params = tokens.flatMap((t) => [`%${t}%`, `%${t}%`, `%${t}%`]);
+      rows = db.prepare(`
+        SELECT * FROM people
+        WHERE ${clauses}
+        ORDER BY last_name, first_name
+      `).all(...params) as Record<string, unknown>[];
+    }
   } else {
     rows = db.prepare("SELECT * FROM people ORDER BY last_name, first_name").all() as Record<string, unknown>[];
   }
@@ -641,11 +650,21 @@ export function deleteInteraction(id: number): boolean {
 
 function hydrateInteraction(row: Record<string, unknown>): Interaction {
   const db = getDb();
-  const people = db.prepare(`
+  const peopleRows = db.prepare(`
     SELECT p.id, p.first_name, p.last_name FROM people p
     JOIN interaction_people ip ON ip.person_id = p.id
     WHERE ip.interaction_id = ?
   `).all(row.id as number) as { id: number; first_name: string; last_name: string }[];
+  const catStmt = db.prepare(`
+    SELECT pc.name FROM person_categories pc
+    JOIN person_category_links pcl ON pcl.category_id = pc.id
+    WHERE pcl.person_id = ?
+    ORDER BY pc.name
+  `);
+  const people = peopleRows.map((p) => ({
+    ...p,
+    categories: (catStmt.all(p.id) as { name: string }[]).map((c) => c.name),
+  }));
   const organizations = db.prepare(`
     SELECT o.id, o.name FROM organizations o
     JOIN interaction_organizations io ON io.organization_id = o.id

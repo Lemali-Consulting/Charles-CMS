@@ -6,6 +6,8 @@ import PersonTypeahead from "@/components/PersonTypeahead";
 interface Person { id: number; first_name: string; last_name: string }
 interface NamedEntity { id: number; name: string }
 
+interface IntroPerson extends Person { categories: string[] }
+
 interface Introduction {
   id: number;
   interaction_type_id: number;
@@ -14,10 +16,38 @@ interface Introduction {
   medium_name: string | null;
   date: string;
   notes: string;
-  people: Person[];
+  people: IntroPerson[];
   organizations: { id: number; name: string }[];
   created_at: string;
   updated_at: string;
+}
+
+const CATEGORY_COLORS: Record<string, string> = {
+  Investor: "bg-emerald-50 text-emerald-700",
+  Customer: "bg-blue-50 text-blue-700",
+  Talent: "bg-amber-50 text-amber-700",
+};
+
+function introCategories(intro: Introduction): string[] {
+  const set = new Set<string>();
+  for (const p of intro.people) for (const c of p.categories) set.add(c);
+  return Array.from(set).sort();
+}
+
+function CategoryBadges({ categories }: { categories: string[] }) {
+  if (categories.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-1">
+      {categories.map((c) => (
+        <span
+          key={c}
+          className={`text-[10px] px-1.5 py-0.5 rounded-full ${CATEGORY_COLORS[c] ?? "bg-gray-100 text-gray-700"}`}
+        >
+          {c}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 export default function IntroductionsPage() {
@@ -88,9 +118,10 @@ export default function IntroductionsPage() {
                       )}
                     </span>
                   </div>
-                  <div className="text-xs text-gray-400 flex gap-2">
+                  <div className="text-xs text-gray-400 flex gap-2 items-center">
                     <span>{intro.date}</span>
                     {intro.medium_name && <span>via {intro.medium_name}</span>}
+                    <CategoryBadges categories={introCategories(intro)} />
                   </div>
                 </div>
               </div>
@@ -271,17 +302,20 @@ function IntroductionDetail({ introduction, mediums, allPeople, onUpdate, onDele
   return (
     <div className="crm-detail-panel">
       <div className="flex items-center justify-between mb-4">
-        <h2>
-          {firstPerson
-            ? `${firstPerson.first_name} ${firstPerson.last_name}`
-            : "Introduction"}
-          {others.length > 0 && (
-            <span className="text-gray-500 font-normal">
-              {" \u2192 "}
-              {others.map(p => `${p.first_name} ${p.last_name}`).join(", ")}
-            </span>
-          )}
-        </h2>
+        <div className="flex flex-col gap-1">
+          <h2>
+            {firstPerson
+              ? `${firstPerson.first_name} ${firstPerson.last_name}`
+              : "Introduction"}
+            {others.length > 0 && (
+              <span className="text-gray-500 font-normal">
+                {" \u2192 "}
+                {others.map(p => `${p.first_name} ${p.last_name}`).join(", ")}
+              </span>
+            )}
+          </h2>
+          <CategoryBadges categories={introCategories(introduction)} />
+        </div>
         <button onClick={onDelete} className="crm-btn crm-btn-danger">Delete</button>
       </div>
 
