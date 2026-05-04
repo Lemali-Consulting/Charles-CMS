@@ -7,7 +7,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const parsed = await parseJson<{ org_1_id?: number; org_2_id?: number }>(request);
+  const parsed = await parseJson<{ org_1_id?: number; org_2_id?: number; relationship_type_id?: number; notes?: string }>(request);
   if (!parsed.ok) return parsed.response;
   const data = parsed.data;
   if (!data.org_1_id || !data.org_2_id) {
@@ -17,7 +17,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Cannot create a relationship with the same organization" }, { status: 400 });
   }
   try {
-    return NextResponse.json(createOrgOrgRelationship(data), { status: 201 });
+    return NextResponse.json(createOrgOrgRelationship({
+      org_1_id: data.org_1_id,
+      org_2_id: data.org_2_id,
+      relationship_type_id: data.relationship_type_id,
+      notes: data.notes,
+    }), { status: 201 });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Unknown error";
     if (msg.includes("UNIQUE")) {

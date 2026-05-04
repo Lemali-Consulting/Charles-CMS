@@ -8,14 +8,14 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const parsed = await parseJson<{ name?: string }>(request);
+  const parsed = await parseJson<{ name?: string; org_type_id?: number; notes?: string }>(request);
   if (!parsed.ok) return parsed.response;
   const data = parsed.data;
   if (!data.name) {
     return NextResponse.json({ error: "name is required" }, { status: 400 });
   }
   try {
-    const org = createOrganization(data);
+    const org = createOrganization({ name: data.name, org_type_id: data.org_type_id, notes: data.notes });
     return NextResponse.json(org, { status: 201 });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Unknown error";

@@ -8,14 +8,20 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const parsed = await parseJson<{ first_name?: string; last_name?: string }>(request);
+  const parsed = await parseJson<{ first_name?: string; last_name?: string; email?: string; linkedin_url?: string; notes?: string }>(request);
   if (!parsed.ok) return parsed.response;
   const data = parsed.data;
   if (!data.first_name || !data.last_name) {
     return NextResponse.json({ error: "first_name and last_name are required" }, { status: 400 });
   }
   try {
-    const person = createPerson(data);
+    const person = createPerson({
+      first_name: data.first_name,
+      last_name: data.last_name,
+      email: data.email,
+      linkedin_url: data.linkedin_url,
+      notes: data.notes,
+    });
     return NextResponse.json(person, { status: 201 });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : "Unknown error";
