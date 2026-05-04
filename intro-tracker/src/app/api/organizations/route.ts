@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOrganizations, createOrganization, deleteOrganization } from "@/lib/db";
-import { parseJson } from "@/lib/parse-json";
 
 export async function GET(request: NextRequest) {
   const search = request.nextUrl.searchParams.get("search") || undefined;
@@ -8,9 +7,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const parsed = await parseJson<{ name?: string }>(request);
-  if (!parsed.ok) return parsed.response;
-  const data = parsed.data;
+  const data = await request.json();
   if (!data.name) {
     return NextResponse.json({ error: "name is required" }, { status: 400 });
   }

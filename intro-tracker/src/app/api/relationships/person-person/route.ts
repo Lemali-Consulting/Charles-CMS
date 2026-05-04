@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPersonPersonRelationships, createPersonPersonRelationship, deletePersonPersonRelationship } from "@/lib/db";
-import { parseJson } from "@/lib/parse-json";
 
 export async function GET() {
   return NextResponse.json(getPersonPersonRelationships());
 }
 
 export async function POST(request: NextRequest) {
-  const parsed = await parseJson<{ person_1_id?: number; person_2_id?: number }>(request);
-  if (!parsed.ok) return parsed.response;
-  const data = parsed.data;
+  const data = await request.json();
   if (!data.person_1_id || !data.person_2_id) {
     return NextResponse.json({ error: "person_1_id and person_2_id are required" }, { status: 400 });
   }

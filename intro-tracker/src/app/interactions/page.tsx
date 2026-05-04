@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import PersonTypeahead from "@/components/PersonTypeahead";
+import { toastIfError } from "@/lib/api-toast";
 
 interface Person { id: number; first_name: string; last_name: string }
 interface NamedEntity { id: number; name: string }
@@ -74,9 +76,11 @@ export default function IntroductionsPage() {
 
   async function handleDelete(id: number) {
     if (!confirm("Delete this introduction?")) return;
-    await fetch(`/api/interactions?id=${id}`, { method: "DELETE", keepalive: true });
+    const res = await fetch(`/api/interactions?id=${id}`, { method: "DELETE", keepalive: true });
+    if (await toastIfError(res, "Failed to delete introduction")) return;
     setSelectedId(null);
     load();
+    toast.success("Introduction deleted");
   }
 
   return (
@@ -168,7 +172,18 @@ function NewIntroductionForm({ mediums, allPeople, onCreated, onCancel }: {
   const availableForOthers = allPeople.filter(p => p.id !== person1Id);
 
   async function handleSubmit() {
-    if (!person1Id || otherPersonIds.length === 0 || !date) return;
+    if (!person1Id) {
+      toast.error("Please select Person 1");
+      return;
+    }
+    if (otherPersonIds.length === 0) {
+      toast.error("Please add at least one person to introduce to");
+      return;
+    }
+    if (!date) {
+      toast.error("Date is required");
+      return;
+    }
     const person_ids = [person1Id as number, ...otherPersonIds];
     const res = await fetch("/api/interactions", {
       method: "POST",
@@ -180,10 +195,10 @@ function NewIntroductionForm({ mediums, allPeople, onCreated, onCancel }: {
         person_ids,
       }),
     });
-    if (res.ok) {
-      const data = await res.json();
-      onCreated(data.id);
-    }
+    if (await toastIfError(res, "Failed to create introduction")) return;
+    const data = await res.json();
+    toast.success("Introduction created");
+    onCreated(data.id);
   }
 
   return (
@@ -288,12 +303,13 @@ function IntroductionDetail({ introduction, mediums, allPeople, onUpdate, onDele
   }, [introduction]);
 
   async function save(data: Record<string, unknown>) {
-    await fetch(`/api/interactions/${introduction.id}`, {
+    const res = await fetch(`/api/interactions/${introduction.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
       keepalive: true,
     });
+    if (await toastIfError(res, "Failed to save")) return;
     onUpdate();
   }
 

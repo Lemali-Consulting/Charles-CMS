@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
+import { toastIfError } from "@/lib/api-toast";
 
 const CATEGORIES = ["Investor", "Customer", "Talent"] as const;
 
@@ -35,27 +37,32 @@ export default function PeoplePage() {
   const selected = people.find((p) => p.id === selectedId) || null;
 
   async function handleCreate() {
-    if (!newFirst.trim() || !newLast.trim()) return;
+    if (!newFirst.trim() || !newLast.trim()) {
+      toast.error("First and last name are required");
+      return;
+    }
     const res = await fetch("/api/people", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ first_name: newFirst.trim(), last_name: newLast.trim() }),
     });
-    if (res.ok) {
-      const person = await res.json();
-      setNewFirst("");
-      setNewLast("");
-      setShowNewForm(false);
-      await load();
-      setSelectedId(person.id);
-    }
+    if (await toastIfError(res, "Failed to create person")) return;
+    const person = await res.json();
+    setNewFirst("");
+    setNewLast("");
+    setShowNewForm(false);
+    await load();
+    setSelectedId(person.id);
+    toast.success("Person created");
   }
 
   async function handleDelete(id: number) {
     if (!confirm("Delete this person?")) return;
-    await fetch(`/api/people?id=${id}`, { method: "DELETE", keepalive: true });
+    const res = await fetch(`/api/people?id=${id}`, { method: "DELETE", keepalive: true });
+    if (await toastIfError(res, "Failed to delete person")) return;
     setSelectedId(null);
     load();
+    toast.success("Person deleted");
   }
 
   return (
@@ -162,7 +169,6 @@ function PersonDetail({ person, onUpdate, onDelete }: {
     people: Array<{ id: number; person_1_id: number; person_1_name: string; person_2_id: number; person_2_name: string; relationship_type_name: string | null }>;
     organizations: Array<{ id: number; organization_name: string; relationship_type_name: string | null }>;
   }>({ people: [], organizations: [] });
-
   const [localCategoryNames, setLocalCategoryNames] = useState<string[]>(
     person.categories.map((c) => c.name)
   );
@@ -189,12 +195,13 @@ function PersonDetail({ person, onUpdate, onDelete }: {
   }, [person]);
 
   async function save(field: string, value: string) {
-    await fetch(`/api/people/${person.id}`, {
+    const res = await fetch(`/api/people/${person.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ [field]: value }),
       keepalive: true,
     });
+    if (await toastIfError(res, "Failed to save")) return;
     onUpdate();
   }
 
@@ -204,18 +211,17 @@ function PersonDetail({ person, onUpdate, onDelete }: {
       ? previous.filter((c) => c !== categoryName)
       : [...previous, categoryName];
     setLocalCategoryNames(next);
-    try {
-      const res = await fetch(`/api/people/${person.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ categories: next }),
-        keepalive: true,
-      });
-      if (!res.ok) throw new Error(`PUT failed: ${res.status}`);
-      onUpdate();
-    } catch {
+    const res = await fetch(`/api/people/${person.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ categories: next }),
+      keepalive: true,
+    });
+    if (await toastIfError(res, "Failed to update categories")) {
       setLocalCategoryNames(previous);
+      return;
     }
+    onUpdate();
   }
 
   return (

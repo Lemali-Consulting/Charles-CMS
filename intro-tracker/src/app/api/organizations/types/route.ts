@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getOrgTypes, createOrgType } from "@/lib/db";
-import { parseJson } from "@/lib/parse-json";
 
 export async function GET() {
   return NextResponse.json(getOrgTypes());
 }
 
 export async function POST(request: NextRequest) {
-  const parsed = await parseJson<{ name?: string }>(request);
-  if (!parsed.ok) return parsed.response;
-  const { name } = parsed.data;
+  const { name } = await request.json();
   if (!name) return NextResponse.json({ error: "name is required" }, { status: 400 });
   try {
     return NextResponse.json(createOrgType(name), { status: 201 });

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import PersonTypeahead from "@/components/PersonTypeahead";
+import { toastIfError } from "@/lib/api-toast";
 
 interface Person { id: number; first_name: string; last_name: string }
 
@@ -46,26 +48,31 @@ export default function OrganizationsPage() {
   const selected = orgs.find((o) => o.id === selectedId) || null;
 
   async function handleCreate() {
-    if (!newName.trim()) return;
+    if (!newName.trim()) {
+      toast.error("Name is required");
+      return;
+    }
     const res = await fetch("/api/organizations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: newName.trim() }),
     });
-    if (res.ok) {
-      const org = await res.json();
-      setNewName("");
-      setShowNewForm(false);
-      await load();
-      setSelectedId(org.id);
-    }
+    if (await toastIfError(res, "Failed to create organization")) return;
+    const org = await res.json();
+    setNewName("");
+    setShowNewForm(false);
+    await load();
+    setSelectedId(org.id);
+    toast.success("Organization created");
   }
 
   async function handleDelete(id: number) {
     if (!confirm("Delete this organization?")) return;
-    await fetch(`/api/organizations?id=${id}`, { method: "DELETE", keepalive: true });
+    const res = await fetch(`/api/organizations?id=${id}`, { method: "DELETE", keepalive: true });
+    if (await toastIfError(res, "Failed to delete organization")) return;
     setSelectedId(null);
     load();
+    toast.success("Organization deleted");
   }
 
   return (
@@ -165,26 +172,29 @@ function OrgDetail({ org, orgTypes, allPeople, onUpdate, onDelete }: {
   }, [org, reloadRelationships]);
 
   async function attachPerson(personId: number) {
-    await fetch("/api/relationships/org-person", {
+    const res = await fetch("/api/relationships/org-person", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ organization_id: org.id, person_id: personId }),
     });
+    if (await toastIfError(res, "Failed to attach person")) return;
     reloadRelationships();
   }
 
   async function detachPerson(relId: number) {
-    await fetch(`/api/relationships/org-person?id=${relId}`, { method: "DELETE", keepalive: true });
+    const res = await fetch(`/api/relationships/org-person?id=${relId}`, { method: "DELETE", keepalive: true });
+    if (await toastIfError(res, "Failed to detach person")) return;
     reloadRelationships();
   }
 
   async function save(field: string, value: unknown) {
-    await fetch(`/api/organizations/${org.id}`, {
+    const res = await fetch(`/api/organizations/${org.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ [field]: value }),
       keepalive: true,
     });
+    if (await toastIfError(res, "Failed to save")) return;
     onUpdate();
   }
 
@@ -195,11 +205,11 @@ function OrgDetail({ org, orgTypes, allPeople, onUpdate, onDelete }: {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: newTypeName.trim() }),
     });
-    if (res.ok) {
-      const newType = await res.json();
-      setNewTypeName("");
-      await save("org_type_id", newType.id);
-    }
+    if (await toastIfError(res, "Failed to create type")) return;
+    const newType = await res.json();
+    setNewTypeName("");
+    await save("org_type_id", newType.id);
+    toast.success("Type created");
   }
 
   return (
