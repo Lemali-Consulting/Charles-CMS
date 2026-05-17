@@ -37,6 +37,9 @@ MS_CLIENT_SECRET      # Entra client secret
 MS_TENANT             # "common" | "consumers" | tenant GUID
 MS_REDIRECT_URI       # https://charles-cms.fly.dev/api/integrations/outlook/callback
 TOKEN_ENC_KEY         # 32-byte base64 key for AES-GCM token encryption
+
+# Phase 2 Track B (BCC ingestion) only:
+INBOUND_EMAIL_SECRET  # signing secret for the inbound-email provider webhook
 ```
 
 ---
@@ -150,6 +153,19 @@ New Outlook contacts appear in a queue; Charles triages each into the CRM.
 
 ## Phase 2 — Email Inbox Surface
 
+Email surfacing has **two alternative tracks** — they are not both required:
+
+- **Track A (this section)** — full mailbox sync via Microsoft Graph OAuth.
+  Surfaces inbound *and* sent mail passively. Highest value, highest privacy
+  footprint, depends on Phase 0.
+- **Track B (next section)** — BCC ingestion. Captures only emails Charles
+  deliberately BCCs (outbound / introduction emails). Minimal privacy
+  footprint, no OAuth, no Phase 0 dependency.
+
+Recommendation: ship **Track B** first as a low-risk way to deliver
+introduction-linking, then treat Track A as a separate go/no-go if passive
+inbound surfacing turns out to matter.
+
 ### Tasks
 
 1. **Data model** — metadata only:
@@ -203,6 +219,81 @@ Charles browses recent mail in-app and logs introductions from it in one click.
 - Inbound and sent messages appear after a sync.
 - Recipients show matched/unmatched status; matched messages offer prefilled
   introduction logging; intro-like emails are surfaced first.
+
+---
+
+## Phase 2 — Alternative Track: BCC Email Ingestion
+
+The "BCC-to-CRM" pattern: Charles BCCs a dedicated intake address on emails he
+wants logged; those emails are ingested as introduction suggestions. No OAuth,
+no mailbox access — the app only ever sees emails Charles deliberately copies.
+
+### Scope limitation
+
+BCC captures **outbound email only** — messages Charles *sends*. He cannot BCC
+mail he *receives*; passive inbound surfacing is not possible with this track
+(an Outlook server-side rule auto-forwarding selected inbound mail to the
+intake address is the only partial workaround). This track fully serves the
+introduction-logging goal; it does not replace Track A's passive inbox view.
+
+### Implementation options
+
+- **Option A — inbound-email provider webhook (recommended).** Use an inbound
+  provider — check Resend's inbound feature first since outbound already runs
+  through Resend; otherwise Postmark offers a free inbound address
+  (`x@inbound.postmarkapp.com`) with zero DNS setup. The provider POSTs parsed
+  email JSON to a webhook. No mailbox, no licensing cost.
+- **Option B — dedicated M365 mailbox.** A licensed mailbox
+  (`intros@charlesdomain.com`, ~$6/mo + domain) read via Graph **application**
+  permissions, locked to that one mailbox by an Exchange **Application Access
+  Policy**. Stronger scoping story but more infrastructure; admin consent
+  required. Only worth it if a real mailbox (e.g. for forwarded inbound) is
+  wanted.
+
+### Tasks (Option A)
+
+1. **Provision the intake address** — confirm Resend inbound capability or
+   create a Postmark inbound address. New env var `INBOUND_EMAIL_SECRET` (the
+   provider's webhook signing secret).
+
+2. **Data model** — reuse `emails` / `email_recipients` from Track A, with
+   `folder = 'bcc'`. Add an intro-suggestion table:
+   ```sql
+   CREATE TABLE IF NOT EXISTS intro_suggestions (
+     id INTEGER PRIMARY KEY AUTOINCREMENT,
+     email_id INTEGER NOT NULL,
+     status TEXT NOT NULL DEFAULT 'pending',  -- pending|logged|dismissed
+     interaction_id INTEGER,                  -- set when logged
+     created_at TEXT NOT NULL DEFAULT (datetime('now')),
+     resolved_at TEXT,
+     FOREIGN KEY (email_id) REFERENCES emails(id) ON DELETE CASCADE,
+     FOREIGN KEY (interaction_id) REFERENCES interactions(id) ON DELETE SET NULL
+   );
+   ```
+
+3. **Webhook route** — `POST /api/integrations/inbound-email`:
+   - Verify the provider's signature against `INBOUND_EMAIL_SECRET`.
+   - **Accept only mail whose `from` matches Charles's known address(es)** —
+     the intake address is public; this prevents forged introductions.
+   - Parse To/CC, store an `emails` row + recipients, match recipients against
+     `people` (reuse `findPersonByEmail`), create an `intro_suggestion`.
+
+4. **Suggestion review UI** — a list of pending suggestions. Each shows the
+   email subject, matched/unmatched recipients, and a **"Log introduction"**
+   action pre-filled with the matched people, date, medium = Email — wired into
+   the existing `interactions` flow. Unmatched recipients link to the Phase 1
+   import queue. Dismiss closes a suggestion without logging.
+
+### Deliverable
+Charles BCCs the intake address on an introduction email and finds it waiting
+as a one-click introduction-logging suggestion.
+
+### Acceptance
+- A BCC'd email from Charles produces a pending `intro_suggestion`.
+- Mail from a non-Charles sender is rejected.
+- "Log introduction" creates an `interactions` row with the matched people and
+  marks the suggestion `logged`; dismiss marks it `dismissed`.
+- A duplicate delivery of the same message does not create a second suggestion.
 
 ---
 
