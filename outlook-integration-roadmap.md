@@ -236,6 +236,21 @@ mail he *receives*; passive inbound surfacing is not possible with this track
 intake address is the only partial workaround). This track fully serves the
 introduction-logging goal; it does not replace Track A's passive inbox view.
 
+### Friction tradeoff (decision point for Charles)
+
+BCC is a **manual per-email step** — Charles must add the intake address when
+he wants an email logged. Mitigations: it applies only to introduction emails
+(not all mail), and friction drops to ~one keystroke if the intake address is
+saved as a contact, or to zero with an Outlook auto-BCC add-in.
+
+The catch: the deliberate BCC *is* the privacy boundary — it's what scopes the
+CRM to only the emails Charles chooses. Fully automating it (auto-BCC
+everything) effectively recreates full-mailbox access, at which point Track A
+is the cleaner way to get there. So the choice is:
+
+- "A small deliberate step per introduction is acceptable" → **Track B**.
+- "It must be zero extra effort, ever" → **Track A** (OAuth full sync).
+
 ### Implementation options
 
 - **Option A — inbound-email provider webhook (recommended).** Use an inbound
